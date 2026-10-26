@@ -1,91 +1,148 @@
 package com.fatimachari.listadecompra
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
+import com.fatimachari.listadecompra.auth.AuthRepository
+import com.fatimachari.listadecompra.ui.screen.LoginScreen
+import com.fatimachari.listadecompra.ui.screen.OnboardingScreen
+import com.fatimachari.listadecompra.ui.screen.RegisterScreen
+import com.fatimachari.listadecompra.ui.screen.SplashScreen
 import com.fatimachari.listadecompra.ui.theme.ListadeCompraTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             ListadeCompraTheme {
-                ListadeCompraApp()
-            }
-        }
-    }
-}
 
-@PreviewScreenSizes
-@Composable
-fun ListadeCompraApp() {
-    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+                val authRepository = remember { AuthRepository() }
+                val scope = rememberCoroutineScope()
+                val context = LocalContext.current
 
-    NavigationSuiteScaffold(
-        navigationSuiteItems = {
-            AppDestinations.entries.forEach {
-                item(
-                    icon = {
-                        Icon(
-                            painterResource(it.icon),
-                            contentDescription = it.label
+                var pantalla by remember {
+                    mutableStateOf("splash")
+                }
+
+                when (pantalla) {
+
+                    "splash" -> {
+                        SplashScreen(
+                            onTimeout = {
+                                pantalla = "onboarding"
+                            }
                         )
-                    },
-                    label = { Text(it.label) },
-                    selected = it == currentDestination,
-                    onClick = { currentDestination = it }
-                )
+                    }
+
+                    "onboarding" -> {
+                        OnboardingScreen(
+                            onNext = {
+                                pantalla = "login"
+                            },
+                            onSkip = {
+                                pantalla = "login"
+                            }
+                        )
+                    }
+
+                    "login" -> {
+                        LoginScreen(
+                            onLogin = { email, password ->
+                                scope.launch {
+                                    val resultado = authRepository.loginWithEmail(email, password)
+                                    resultado.onSuccess { user ->
+                                        Toast.makeText(
+                                            context,
+                                            "¡Bienvenido/a ${user.email ?: ""}!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }.onFailure { error ->
+                                        Toast.makeText(
+                                            context,
+                                            error.localizedMessage ?: "Error al iniciar sesión.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            },
+                            onRegister = {
+                                pantalla = "registro"
+                            },
+                            onGoogleClick = {
+                                scope.launch {
+                                    val resultado = authRepository.signInWithGoogle(this@MainActivity)
+                                    resultado.onSuccess { user ->
+                                        Toast.makeText(
+                                            context,
+                                            "¡Bienvenido/a ${user.email ?: ""}!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }.onFailure { error ->
+                                        Toast.makeText(
+                                            context,
+                                            error.localizedMessage ?: "Error al iniciar sesión con Google.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            }
+                        )
+                    }
+
+                    "registro" -> {
+                        RegisterScreen(
+                            onRegister = { email, password ->
+                                scope.launch {
+                                    val resultado = authRepository.registerWithEmail(email, password)
+                                    resultado.onSuccess { user ->
+                                        Toast.makeText(
+                                            context,
+                                            "¡Cuenta creada correctamente para ${user.email ?: ""}!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        pantalla = "login"
+                                    }.onFailure { error ->
+                                        Toast.makeText(
+                                            context,
+                                            error.localizedMessage ?: "Error al crear cuenta.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            },
+                            onLogin = {
+                                pantalla = "login"
+                            }
+                        )
+                    }
+                }
             }
         }
-    ) {
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            Greeting(
-                name = "Android",
-                modifier = Modifier.padding(innerPadding)
-            )
-        }
     }
-}
-
-enum class AppDestinations(
-    val label: String,
-    val icon: Int,
-) {
-    HOME("Home", R.drawable.ic_home),
-    FAVORITES("Favorites", R.drawable.ic_favorite),
-    PROFILE("Profile", R.drawable.ic_account_box),
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
 }
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun LoginPreview() {
     ListadeCompraTheme {
-        Greeting("Android")
+        LoginScreen(
+            onLogin = { _, _ -> },
+            onRegister = {},
+            onGoogleClick = {}
+        )
     }
 }
