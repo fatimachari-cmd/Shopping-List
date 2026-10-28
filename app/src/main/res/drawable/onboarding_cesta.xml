@@ -1,0 +1,69 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Background circle shadow/glow -->
+    <path
+        android:fillColor="#E1F0E7"
+        android:pathData="M50,10 A40,40 0 1,1 49.9,10 Z" />
+
+    <!-- Bread / Baguette sticking out -->
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M38,20 L48,20 C50,20 52,22 52,24 L44,52 L34,52 L34,24 C34,22 36,20 38,20 Z" />
+    <path
+        android:fillColor="#D4A732"
+        android:pathData="M39,26 L47,28 M38,34 L46,36 M37,42 L45,44"
+        android:strokeColor="#D4A732"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+
+    <!-- Bottle / Milk sticking out -->
+    <path
+        android:fillColor="#73B690"
+        android:pathData="M56,28 L64,28 C65,28 66,29 66,30 L66,34 L54,34 L54,30 C54,29 55,28 56,28 Z" />
+    <path
+        android:fillColor="#263A30"
+        android:pathData="M53,34 L67,34 C68,34 69,35 69,36 L69,52 L51,52 L51,36 C51,35 52,34 53,34 Z" />
+
+    <!-- Red/Orange Apple fruit -->
+    <path
+        android:fillColor="#E05D52"
+        android:pathData="M30,42 C26,42 22,46 22,50 C22,56 30,62 30,62 C30,62 38,56 38,50 C38,46 34,42 30,42 Z" />
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M30,40 C32,36 36,36 36,36 C36,36 35,40 30,40 Z" />
+
+    <!-- Shopping Basket Body -->
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M18,48 L82,48 C85,48 87,50 86,53 L78,85 C77,88 74,90 71,90 L29,90 C26,90 23,88 22,85 L14,53 C13,50 15,48 18,48 Z" />
+
+    <!-- Basket Rim -->
+    <path
+        android:fillColor="#23583C"
+        android:pathData="M15,46 L85,46 C87,46 88,48 88,50 L88,52 L12,52 L12,50 C12,48 13,46 15,46 Z" />
+
+    <!-- Basket Handles -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#30734F"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M30,46 C30,30 70,30 70,46" />
+
+    <!-- Basket Weave Pattern -->
+    <path
+        android:fillColor="#23583C"
+        android:pathData="M24,58 L76,58 L75,62 L25,62 Z M27,70 L73,70 L72,74 L28,74 Z M30,82 L70,82 L69,86 L31,86 Z" />
+
+    <!-- Sparkles -->
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M15,22 L17,17 L22,15 L17,13 L15,8 L13,13 L8,15 L13,17 Z" />
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M82,28 L83.5,24 L88,22.5 L83.5,21 L82,17 L80.5,21 L76,22.5 L80.5,24 Z" />
+</vector>

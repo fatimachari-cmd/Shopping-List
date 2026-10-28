@@ -1,0 +1,82 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Soft background glow -->
+    <path
+        android:fillColor="#E1F0E7"
+        android:pathData="M50,10 A40,40 0 1,1 49.9,10 Z" />
+
+    <!-- Main Checklist Board -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M22,18 L78,18 C81.3,18 84,20.7 84,24 L84,82 C84,85.3 81.3,88 78,88 L22,88 C18.7,88 16,85.3 16,82 L16,24 C16,20.7 18.7,18 22,18 Z" />
+
+    <!-- Checked Item 1 -->
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M28,30 A7,7 0 1,1 27.9,30 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24.5,30 L27,32.5 L31.5,27.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+    <!-- Strikethrough Item Line 1 -->
+    <path
+        android:fillColor="#73B690"
+        android:pathData="M38,29 L74,29 C74.6,29 75,29.4 75,30 C75,30.6 74.6,31 74,31 L38,31 C37.4,31 37,30.6 37,30 C37,29.4 37.4,29 38,29 Z" />
+
+    <!-- Checked Item 2 -->
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M28,48 A7,7 0 1,1 27.9,48 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24.5,48 L27,50.5 L31.5,45.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+    <!-- Strikethrough Item Line 2 -->
+    <path
+        android:fillColor="#73B690"
+        android:pathData="M38,47 L68,47 C68.6,47 69,47.4 69,48 C69,48.6 68.6,49 68,49 L38,49 C37.4,49 37,48.6 37,48 C37,47.4 37.4,47 38,47 Z" />
+
+    <!-- Checked Item 3 -->
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M28,66 A7,7 0 1,1 27.9,66 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24.5,66 L27,68.5 L31.5,63.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+    <!-- Strikethrough Item Line 3 -->
+    <path
+        android:fillColor="#73B690"
+        android:pathData="M38,65 L60,65 C60.6,65 61,65.4 61,66 C61,66.6 60.6,67 60,67 L38,67 C37.4,67 37,66.6 37,66 C37,65.4 37.4,65 38,65 Z" />
+
+    <!-- Big Success Seal / Check Badge at Bottom Right -->
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M72,66 A14,14 0 1,1 71.9,66 Z" />
+    <path
+        android:fillColor="#263A30"
+        android:pathData="M65,66 L70,71 L79,61"
+        android:strokeColor="#263A30"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+
+    <!-- Celebration Sparkles -->
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M84,18 L85.5,14 L90,12.5 L85.5,11 L84,7 L82.5,11 L78,12.5 L82.5,14 Z" />
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M12,18 L13.5,14 L18,12.5 L13.5,11 L12,7 L10.5,11 L6,12.5 L10.5,14 Z" />
+
+</vector>
