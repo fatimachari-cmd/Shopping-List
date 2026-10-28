@@ -1,0 +1,90 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Soft background glow -->
+    <path
+        android:fillColor="#E1F0E7"
+        android:pathData="M50,10 A40,40 0 1,1 49.9,10 Z" />
+
+    <!-- Shared List Clipboard / Phone Card -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,18 L72,18 C75.3,18 78,20.7 78,24 L78,82 C78,85.3 75.3,88 72,88 L28,88 C24.7,88 22,85.3 22,82 L22,24 C22,20.7 24.7,18 28,18 Z" />
+
+    <!-- Clipboard Header / Clip -->
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M38,14 L62,14 C64.2,14 66,15.8 66,18 L66,22 L34,22 L34,18 C34,15.8 35.8,14 38,14 Z" />
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M44,17 L56,17 A3,3 0 0,1 56,23 L44,23 A3,3 0 0,1 44,17 Z" />
+
+    <!-- List Items lines -->
+    <!-- Line 1: Checkbox + Bar -->
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M30,32 L36,32 C37.1,32 38,32.9 38,34 L38,40 C38,41.1 37.1,42 36,42 L30,42 C28.9,42 28,41.1 28,40 L28,34 C28,32.9 28.9,32 30,32 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M31,37 L33.5,39.5 L36,34.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+    <path
+        android:fillColor="#73B690"
+        android:pathData="M42,35 L70,35 C71.1,35 72,35.9 72,37 C72,38.1 71.1,39 70,39 L42,39 C40.9,39 40,38.1 40,37 C40,35.9 40.9,35 42,35 Z" />
+
+    <!-- Line 2: Checkbox + Bar -->
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M30,48 L36,48 C37.1,48 38,48.9 38,50 L38,56 C38,57.1 37.1,58 36,58 L30,58 C28.9,58 28,57.1 28,56 L28,50 C28,48.9 28.9,48 30,48 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M31,53 L33.5,55.5 L36,50.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M42,51 L66,51 C67.1,51 68,51.9 68,53 C68,54.1 67.1,55 66,55 L42,55 C40.9,55 40,54.1 40,53 C40,51.9 40.9,51 42,51 Z" />
+
+    <!-- Line 3: Empty Checkbox + Bar -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#C2D8CB"
+        android:strokeWidth="2"
+        android:pathData="M30,64 L36,64 C37.1,64 38,64.9 38,66 L38,72 C38,73.1 37.1,74 36,74 L30,74 C28.9,74 28,73.1 28,72 L28,66 C28,64.9 28.9,64 30,64 Z" />
+    <path
+        android:fillColor="#C2D8CB"
+        android:pathData="M42,67 L60,67 C61.1,67 62,67.9 62,69 C62,70.1 61.1,71 60,71 L42,71 C40.9,71 40,70.1 40,69 C40,67.9 40.9,67 42,67 Z" />
+
+    <!-- Left User Avatar -->
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M14,40 A8,8 0 1,1 13.9,40 Z" />
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M6,56 C6,50 10,48 14,48 C18,48 22,50 22,56 L6,56 Z" />
+
+    <!-- Right User Avatar -->
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M86,40 A8,8 0 1,1 85.9,40 Z" />
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M78,56 C78,50 82,48 86,48 C90,48 94,50 94,56 L78,56 Z" />
+
+    <!-- Sharing Connection Node Line (Top) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#30734F"
+        android:strokeWidth="2"
+        android:pathData="M14,32 C14,20 86,20 86,32" />
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M50,16 A4,4 0 1,1 49.9,16 Z" />
+
+</vector>

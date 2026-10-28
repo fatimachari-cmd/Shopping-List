@@ -1,0 +1,48 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Soft background circle -->
+    <path
+        android:fillColor="#E7F2EC"
+        android:pathData="M50,4 A46,46 0 1,1 49.9,4 Z" />
+
+    <!-- Basket Handles with Leaf Accent -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#30734F"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M32,46 C32,28 68,28 68,46" />
+
+    <!-- Small leaf sprout on handle -->
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M50,26 C53,20 58,20 58,20 C58,20 57,25 52,27 C50.5,27.5 50,26.5 50,26 Z" />
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M50,26 C47,21 42,21 42,21 C42,21 43,26 48,27 C49.5,27.5 50,26.5 50,26 Z" />
+
+    <!-- Shopping Basket Body -->
+    <path
+        android:fillColor="#30734F"
+        android:pathData="M20,46 L80,46 C83,46 85,48 84,51 L77,80 C76,83 73,85 70,85 L30,85 C27,85 24,83 23,80 L16,51 C15,48 17,46 20,46 Z" />
+
+    <!-- Basket Top Rim -->
+    <path
+        android:fillColor="#23583C"
+        android:pathData="M16,44 L84,44 C86,44 87,46 87,48 L87,50 L13,50 L13,48 C13,46 14,44 16,44 Z" />
+
+    <!-- Basket Horizontal Stripes -->
+    <path
+        android:fillColor="#23583C"
+        android:pathData="M25,56 L75,56 L74,60 L26,60 Z M28,67 L72,67 L71,71 L29,71 Z M31,78 L69,78 L68,82 L32,82 Z" />
+
+    <!-- Heart/Star accent badge on basket -->
+    <path
+        android:fillColor="#E8BE45"
+        android:pathData="M50,60 C50,60 44,55 44,52 C44,50 46,48 48,48 C49.3,48 50,49 50,49 C50,49 50.7,48 52,48 C54,48 56,50 56,52 C56,55 50,60 50,60 Z" />
+
+</vector>
