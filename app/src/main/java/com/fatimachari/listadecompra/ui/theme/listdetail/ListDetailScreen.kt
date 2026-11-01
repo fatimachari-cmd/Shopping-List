@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
@@ -14,12 +16,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -29,14 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.fatimachari.listadecompra.data.ShoppingRepository
 import com.fatimachari.listadecompra.models.Category
 import com.fatimachari.listadecompra.models.Product
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.runtime.DisposableEffect
-import com.fatimachari.listadecompra.data.ShoppingRepository
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.LinearProgressIndicator
 
 @Composable
 fun ListDetailScreen(listId: String, onBack: () -> Unit) {
@@ -46,7 +45,6 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
 
     // La lista de productos (vienen de Firestore)
     val products = remember { mutableStateListOf<Product>() }
-
 
     // Creamos variables de estado
     var showDialog by remember { mutableStateOf(false) }
@@ -104,7 +102,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                 .padding(top = 8.dp)
         )
 
-        //Mensaje que sale cundo no hay categorías
+        // Mensaje que sale cundo no hay categorías
         if (categories.isEmpty()) {
             Text(
                 "Todavía no hay categorías. Pulsa «Nueva categoría» para empezar.",
@@ -143,9 +141,9 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = product.completed,
-                        onCheckedChange = {
-                            val index = products.indexOf(product)
-                            products[index] = product.copy(completed = it)
+                        onCheckedChange = { checked ->
+                            // Guarda el cambio de completado en Firestore
+                            repository.saveProduct(listId, product.copy(completed = checked))
                         }
                     )
                     Text(
@@ -166,7 +164,10 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                             contentDescription = "Editar producto"
                         )
                     }
-                    IconButton(onClick = { products.remove(product) }) {
+                    IconButton(onClick = {
+                        // Elimina el producto en Firestore
+                        repository.deleteProduct(listId, product.id)
+                    }) {
                         Icon(Icons.Default.Delete, contentDescription = "Eliminar producto")
                     }
                 }
@@ -285,7 +286,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                         OutlinedTextField(
                             value = newName,
                             onValueChange = {
-                                newName = it;
+                                newName = it
                                 error = false
                                 if (editingProduct == null) {
                                     val guess = guessCategoryName(it)
@@ -297,7 +298,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                             },
                             label = { Text("Nombre del producto") },
                             isError = error,
-                            supportingText = { if (error) Text("El nombre no puede estar vacío") }
+                            supportingText = { if (error) Text("El nombre no me puede estar vacío") }
                         )
 
                         Text("Categoría", modifier = Modifier.padding(top = 16.dp))
@@ -320,21 +321,23 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                         } else {
                             val editing = editingProduct
                             if (editing == null) {
-                                products.add(
+                                // Guardar producto nuevo en Firestore con id vacío
+                                repository.saveProduct(
+                                    listId,
                                     Product(
-                                        id = System.currentTimeMillis().toString(),
                                         name = newName.trim(),
                                         categoryId = selectedCategoryId
                                     )
                                 )
                             } else {
-                                val index = products.indexOfFirst { it.id == editing.id }
-                                if (index != -1) {
-                                    products[index] = editing.copy(
+                                // Guardar producto editado en Firestore con su id existente
+                                repository.saveProduct(
+                                    listId,
+                                    editing.copy(
                                         name = newName.trim(),
                                         categoryId = selectedCategoryId
                                     )
-                                }
+                                )
                             }
                             newName = ""
                             showDialog = false
@@ -371,6 +374,3 @@ fun guessCategoryName(productName: String): String? {
     val text = productName.trim().lowercase()
     return keywords.entries.firstOrNull { text.contains(it.key) }?.value
 }
-
-
-

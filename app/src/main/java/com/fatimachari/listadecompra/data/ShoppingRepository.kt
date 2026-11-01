@@ -40,4 +40,34 @@ class ShoppingRepository {
                 }
             }
     }
+
+    // Guarda o actualiza un producto en Firestore
+    fun saveProduct(listId: String, product: Product) {
+        val collection = db.collection("lists").document(listId).collection("products")
+        val doc = if (product.id.isEmpty()) {
+            collection.document()
+        } else {
+            collection.document(product.id)
+        }
+        val productToSave = product.copy(id = doc.id)
+        doc.set(productToSave)
+            .addOnSuccessListener {
+                Log.d("Firestore", "Producto guardado: ${doc.id}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firestore", "Error al guardar producto", e)
+            }
+    }
+
+    // Elimina un producto de Firestore
+    fun deleteProduct(listId: String, productId: String) {
+        db.collection("lists").document(listId).collection("products").document(productId)
+            .delete()
+            .addOnSuccessListener {
+                Log.d("Firestore", "Producto eliminado: $productId")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firestore", "Error al eliminar producto", e)
+            }
+    }
 }
