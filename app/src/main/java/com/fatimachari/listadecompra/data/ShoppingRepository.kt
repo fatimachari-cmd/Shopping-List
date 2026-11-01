@@ -70,4 +70,26 @@ class ShoppingRepository {
                 Log.e("Firestore", "Error al eliminar producto", e)
             }
     }
+
+    // Guarda o actualiza una categoría en Firestore
+    fun saveCategory(listId: String, category: Category) {
+        val collection = db.collection("lists").document(listId).collection("categories")
+        val doc = if (category.id.isEmpty()) collection.document() else collection.document(category.id)
+        doc.set(category.copy(id = doc.id))
+            .addOnSuccessListener { Log.d("Firestore", "Categoría guardada: ${doc.id}") }
+            .addOnFailureListener { e -> Log.e("Firestore", "Error al guardar categoría", e) }
+    }
+
+    // Elimina una categoría y todos sus productos de golpe
+    fun deleteCategory(listId: String, categoryId: String, productIds: List<String>) {
+        val listDoc = db.collection("lists").document(listId)
+        val batch = db.batch()
+        productIds.forEach { id ->
+            batch.delete(listDoc.collection("products").document(id))
+        }
+        batch.delete(listDoc.collection("categories").document(categoryId))
+        batch.commit()
+            .addOnSuccessListener { Log.d("Firestore", "Categoría eliminada: $categoryId") }
+            .addOnFailureListener { e -> Log.e("Firestore", "Error al eliminar categoría", e) }
+    }
 }

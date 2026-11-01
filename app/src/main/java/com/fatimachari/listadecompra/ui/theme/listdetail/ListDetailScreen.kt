@@ -52,6 +52,8 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
     var error by remember { mutableStateOf(false) }
     var selectedCategoryId by remember { mutableStateOf(if (categories.isNotEmpty()) categories[0].id else "") }
     var editingProduct by remember { mutableStateOf<Product?>(null) }
+    var newQuantity by remember { mutableStateOf("1") }
+    var newUnit by remember { mutableStateOf("unidad") }
 
     var showCategoryDialog by remember { mutableStateOf(false) }
     var categoryName by remember { mutableStateOf("") }
@@ -155,6 +157,8 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                     IconButton(onClick = {
                         editingProduct = product
                         newName = product.name
+                        newQuantity = product.quantity.toString().removeSuffix(".0")
+                        newUnit = product.unit
                         selectedCategoryId = product.categoryId
                         error = false
                         showDialog = true
@@ -182,6 +186,8 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                 selectedCategoryId = if (categories.isNotEmpty()) categories[0].id else ""
                 error = false
                 showDialog = true
+                newQuantity = "1"
+                newUnit = "unidad"
             },
             modifier = Modifier.padding(top = 16.dp),
             enabled = categories.isNotEmpty()
@@ -223,17 +229,11 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                         } else {
                             val editing = editingCategory
                             if (editing == null) {
-                                categories.add(
-                                    Category(
-                                        id = System.currentTimeMillis().toString(),
-                                        name = categoryName.trim()
-                                    )
-                                )
+                                // Categoría nueva: sin id, Firestore le pone uno
+                                repository.saveCategory(listId, Category(name = categoryName.trim()))
                             } else {
-                                val index = categories.indexOfFirst { it.id == editing.id }
-                                if (index != -1) {
-                                    categories[index] = editing.copy(name = categoryName.trim())
-                                }
+                                // Editar: conserva el id y solo cambia el nombre
+                                repository.saveCategory(listId, editing.copy(name = categoryName.trim()))
                             }
                             categoryName = ""
                             showCategoryDialog = false
@@ -261,8 +261,8 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                 },
                 confirmButton = {
                     Button(onClick = {
-                        products.removeAll { it.categoryId == toDelete.id }
-                        categories.removeAll { it.id == toDelete.id }
+                        val ids = products.filter { it.categoryId == toDelete.id }.map { it.id }
+                        repository.deleteCategory(listId, toDelete.id, ids)
                         categoryToDelete = null
                     }) {
                         Text("Eliminar")
