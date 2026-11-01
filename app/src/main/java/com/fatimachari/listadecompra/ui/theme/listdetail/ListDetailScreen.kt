@@ -33,27 +33,20 @@ import com.fatimachari.listadecompra.models.Category
 import com.fatimachari.listadecompra.models.Product
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.DisposableEffect
+import com.fatimachari.listadecompra.data.ShoppingRepository
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.LinearProgressIndicator
 
 @Composable
 fun ListDetailScreen(listId: String, onBack: () -> Unit) {
 
-    // La lista de categorias
-    val categories = remember {
-        mutableStateListOf(
-            Category(id = "1", name = "Frutas y verduras"),
-            Category(id = "2", name = "Lácteos")
-        )
-    }
+    // La lista de categorias (vienen de Firestore)
+    val categories = remember { mutableStateListOf<Category>() }
 
-    // La lista de productos
-    val products = remember {
-        mutableStateListOf(
-            Product(id = "1", name = "Manzana", categoryId = "1"),
-            Product(id = "2", name = "Plátano", categoryId = "1"),
-            Product(id = "3", name = "Leche", categoryId = "2"),
-            Product(id = "4", name = "Queso", categoryId = "2")
-        )
-    }
+    // La lista de productos (vienen de Firestore)
+    val products = remember { mutableStateListOf<Product>() }
+
 
     // Creamos variables de estado
     var showDialog by remember { mutableStateOf(false) }
@@ -68,7 +61,23 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
     var editingCategory by remember { mutableStateOf<Category?>(null) }
     var categoryToDelete by remember { mutableStateOf<Category?>(null) }
     val scrollState = rememberScrollState()
+    val repository = remember { ShoppingRepository() }
+    val doneCount = products.count { it.completed }
 
+    DisposableEffect(listId) {
+        val categoriesListener = repository.listenCategories(listId) { newCategories ->
+            categories.clear()
+            categories.addAll(newCategories)
+        }
+        val productsListener = repository.listenProducts(listId) { newProducts ->
+            products.clear()
+            products.addAll(newProducts)
+        }
+        onDispose {
+            categoriesListener.remove()
+            productsListener.remove()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -76,7 +85,32 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
             .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
-        Text("Compra semanal", style = MaterialTheme.typography.titleLarge)
+
+        // ponemos la flecha a la izquierda del título para volver
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+            }
+            Text("Compra semanal", style = MaterialTheme.typography.titleLarge)
+        }
+
+        // el contador de productos completados
+        Text("$doneCount de ${products.size} productos", modifier = Modifier.padding(top = 8.dp))
+
+        LinearProgressIndicator(
+            progress = { if (products.isEmpty()) 0f else doneCount.toFloat() / products.size },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        )
+
+        //Mensaje que sale cundo no hay categorías
+        if (categories.isEmpty()) {
+            Text(
+                "Todavía no hay categorías. Pulsa «Nueva categoría» para empezar.",
+                modifier = Modifier.padding(top = 24.dp)
+            )
+        }
 
         // Repetimos por cada categoría
         categories.forEach { category ->
@@ -105,7 +139,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
             }
 
             // Repetimos por cada producto de esta categoría
-            products.filter { it.categoryId == category.id }.forEach { product ->
+            products.filter { it.categoryId == category.id }.sortedBy { it.completed }.forEach { product ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = product.completed,
