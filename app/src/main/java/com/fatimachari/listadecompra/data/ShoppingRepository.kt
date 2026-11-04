@@ -1,95 +1,400 @@
+
 package com.fatimachari.listadecompra.data
 
 import android.util.Log
 import com.fatimachari.listadecompra.models.Category
 import com.fatimachari.listadecompra.models.Product
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import java.security.SecureRandom
 
 class ShoppingRepository {
+
     private val db = FirebaseFirestore.getInstance()
 
-    fun listenCategories(listId: String, onChange: (List<Category>) -> Unit): ListenerRegistration {
-        return db.collection("lists").document(listId).collection("categories")
+    // Generador de códigos aleatorios
+    private val random = SecureRandom()
+    private val caracteres = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+    // Escuchar las categorías de una lista
+    fun listenCategories(
+        listId: String,
+        onChange: (List<Category>) -> Unit
+    ): ListenerRegistration {
+
+        return db.collection("lists")
+            .document(listId)
+            .collection("categories")
             .addSnapshotListener { snapshot, error ->
+
                 if (error != null) {
                     Log.e("Firestore", "Error leyendo categorías", error)
                     return@addSnapshotListener
                 }
+
                 if (snapshot != null) {
                     val categories = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(Category::class.java)?.copy(id = doc.id)
                     }
+
                     onChange(categories)
                 }
             }
     }
 
-    fun listenProducts(listId: String, onChange: (List<Product>) -> Unit): ListenerRegistration {
-        return db.collection("lists").document(listId).collection("products")
+    // Escuchar los productos de una lista
+    fun listenProducts(
+        listId: String,
+        onChange: (List<Product>) -> Unit
+    ): ListenerRegistration {
+
+        return db.collection("lists")
+            .document(listId)
+            .collection("products")
             .addSnapshotListener { snapshot, error ->
+
                 if (error != null) {
                     Log.e("Firestore", "Error leyendo productos", error)
                     return@addSnapshotListener
                 }
+
                 if (snapshot != null) {
                     val products = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(Product::class.java)?.copy(id = doc.id)
                     }
+
                     onChange(products)
                 }
             }
     }
 
-    // Guarda o actualiza un producto en Firestore
+    // Guardar o actualizar un producto
     fun saveProduct(listId: String, product: Product) {
-        val collection = db.collection("lists").document(listId).collection("products")
+
+        val collection = db.collection("lists")
+            .document(listId)
+            .collection("products")
+
         val doc = if (product.id.isEmpty()) {
             collection.document()
         } else {
             collection.document(product.id)
         }
+
         val productToSave = product.copy(id = doc.id)
+
         doc.set(productToSave)
             .addOnSuccessListener {
                 Log.d("Firestore", "Producto guardado: ${doc.id}")
             }
-            .addOnFailureListener { e ->
-                Log.e("Firestore", "Error al guardar producto", e)
+            .addOnFailureListener { error ->
+                Log.e("Firestore", "Error al guardar producto", error)
             }
     }
 
-    // Elimina un producto de Firestore
+    // Eliminar un producto
     fun deleteProduct(listId: String, productId: String) {
-        db.collection("lists").document(listId).collection("products").document(productId)
+
+        db.collection("lists")
+            .document(listId)
+            .collection("products")
+            .document(productId)
             .delete()
             .addOnSuccessListener {
                 Log.d("Firestore", "Producto eliminado: $productId")
             }
-            .addOnFailureListener { e ->
-                Log.e("Firestore", "Error al eliminar producto", e)
+            .addOnFailureListener { error ->
+                Log.e("Firestore", "Error al eliminar producto", error)
             }
     }
 
-    // Guarda o actualiza una categoría en Firestore
+    // Guardar o actualizar una categoría
     fun saveCategory(listId: String, category: Category) {
-        val collection = db.collection("lists").document(listId).collection("categories")
-        val doc = if (category.id.isEmpty()) collection.document() else collection.document(category.id)
+
+        val collection = db.collection("lists")
+            .document(listId)
+            .collection("categories")
+
+        val doc = if (category.id.isEmpty()) {
+            collection.document()
+        } else {
+            collection.document(category.id)
+        }
+
         doc.set(category.copy(id = doc.id))
-            .addOnSuccessListener { Log.d("Firestore", "Categoría guardada: ${doc.id}") }
-            .addOnFailureListener { e -> Log.e("Firestore", "Error al guardar categoría", e) }
+            .addOnSuccessListener {
+                Log.d("Firestore", "Categoría guardada: ${doc.id}")
+            }
+            .addOnFailureListener { error ->
+                Log.e("Firestore", "Error al guardar categoría", error)
+            }
     }
 
-    // Elimina una categoría y todos sus productos de golpe
-    fun deleteCategory(listId: String, categoryId: String, productIds: List<String>) {
+    // Eliminar una categoría y sus productos
+    fun deleteCategory(
+        listId: String,
+        categoryId: String,
+        productIds: List<String>
+    ) {
+
         val listDoc = db.collection("lists").document(listId)
         val batch = db.batch()
+
         productIds.forEach { id ->
             batch.delete(listDoc.collection("products").document(id))
         }
+
         batch.delete(listDoc.collection("categories").document(categoryId))
+
         batch.commit()
-            .addOnSuccessListener { Log.d("Firestore", "Categoría eliminada: $categoryId") }
-            .addOnFailureListener { e -> Log.e("Firestore", "Error al eliminar categoría", e) }
+            .addOnSuccessListener {
+                Log.d("Firestore", "Categoría eliminada: $categoryId")
+            }
+            .addOnFailureListener { error ->
+                Log.e("Firestore", "Error al eliminar categoría", error)
+            }
+    }
+
+    // Crear una lista
+    fun createList(
+        listId: String,
+        title: String,
+        ownerId: String,
+        onResult: (Boolean) -> Unit
+    ) {
+
+        val data = hashMapOf(
+            "id" to listId,
+            "title" to title,
+            "ownerId" to ownerId,
+            "members" to listOf(ownerId),
+            "shareCode" to null,
+            "isFavorite" to false
+        )
+
+        db.collection("lists")
+            .document(listId)
+            .set(data)
+            .addOnSuccessListener {
+                Log.d("Firestore", "Lista creada correctamente")
+                onResult(true)
+            }
+            .addOnFailureListener { error ->
+                Log.e("Firestore", "Error al crear la lista", error)
+                onResult(false)
+            }
+    }
+
+    // Escuchar las listas propias y compartidas
+    fun listenLists(
+        ownerId: String,
+        onChange: (List<Map<String, Any?>>) -> Unit
+    ): ListenerRegistration {
+
+        val listasPropias = mutableMapOf<String, Map<String, Any?>>()
+        val listasCompartidas = mutableMapOf<String, Map<String, Any?>>()
+
+        fun publicarListas() {
+            val todasLasListas = listasPropias + listasCompartidas
+            onChange(todasLasListas.values.toList())
+        }
+
+        // Escuchar las listas propias
+        val listenerPropias = db.collection("lists")
+            .whereEqualTo("ownerId", ownerId)
+            .addSnapshotListener { snapshot, error ->
+
+                if (error != null) {
+                    Log.e("Firestore", "Error leyendo listas propias", error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    listasPropias.clear()
+
+                    snapshot.documents.forEach { documento ->
+                        val datos = documento.data?.toMutableMap()
+
+                        if (datos != null) {
+                            datos["id"] = documento.id
+                            listasPropias[documento.id] = datos
+                        }
+                    }
+
+                    publicarListas()
+                }
+            }
+
+        // Escuchar las listas compartidas
+        val listenerCompartidas = db.collection("lists")
+            .whereArrayContains("members", ownerId)
+            .addSnapshotListener { snapshot, error ->
+
+                if (error != null) {
+                    Log.e("Firestore", "Error leyendo listas compartidas", error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    listasCompartidas.clear()
+
+                    snapshot.documents.forEach { documento ->
+                        val datos = documento.data?.toMutableMap()
+
+                        if (datos != null) {
+                            datos["id"] = documento.id
+                            listasCompartidas[documento.id] = datos
+                        }
+                    }
+
+                    publicarListas()
+                }
+            }
+
+        // Cancelar los dos listeners
+        return object : ListenerRegistration {
+            override fun remove() {
+                listenerPropias.remove()
+                listenerCompartidas.remove()
+            }
+        }
+    }
+
+    // Generar un código para compartir una lista
+    fun createShareCode(
+        listId: String,
+        ownerId: String,
+        onResult: (String?) -> Unit
+    ) {
+
+        val codigo = buildString {
+            repeat(8) {
+                append(caracteres[random.nextInt(caracteres.length)])
+            }
+        }
+
+        val listRef = db.collection("lists").document(listId)
+        val codeRef = db.collection("shareCodes").document(codigo)
+
+        db.runTransaction { transaction ->
+
+            val listSnapshot = transaction.get(listRef)
+            val codeSnapshot = transaction.get(codeRef)
+
+            if (!listSnapshot.exists()) {
+                throw Exception("La lista no existe")
+            }
+
+            if (listSnapshot.getString("ownerId") != ownerId) {
+                throw Exception("No eres el propietario de esta lista")
+            }
+
+            if (codeSnapshot.exists()) {
+                throw Exception("Código duplicado")
+            }
+
+            transaction.update(listRef, "shareCode", codigo)
+
+            transaction.set(
+                codeRef,
+                mapOf(
+                    "listId" to listId,
+                    "createdBy" to ownerId,
+                    "createdAt" to FieldValue.serverTimestamp()
+                )
+            )
+
+            codigo
+
+        }.addOnSuccessListener { codigoCreado ->
+            Log.d("Firestore", "Código creado: $codigoCreado")
+            onResult(codigoCreado)
+
+        }.addOnFailureListener { error ->
+            Log.e("Firestore", "Error generando código", error)
+            onResult(null)
+        }
+    }
+
+    // Unirse a una lista mediante el código
+    fun joinListWithCode(
+        code: String,
+        userId: String,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+
+        val codigo = code.trim().uppercase()
+
+        if (codigo.isEmpty() || userId.isEmpty()) {
+            onResult(false, "Introduce un código válido")
+            return
+        }
+
+        val codeRef = db.collection("shareCodes").document(codigo)
+
+        // Comprobar que el código existe
+        codeRef.get()
+            .addOnSuccessListener { codeDocument ->
+
+                if (!codeDocument.exists()) {
+                    onResult(false, "El código no existe")
+                    return@addOnSuccessListener
+                }
+
+                val listId = codeDocument.getString("listId")
+
+                if (listId.isNullOrEmpty()) {
+                    onResult(false, "Código incorrecto")
+                    return@addOnSuccessListener
+                }
+
+                val listRef = db.collection("lists").document(listId)
+
+                // Añadir directamente al usuario sin leer previamente la lista
+                listRef.update(
+                    mapOf(
+                        "members" to FieldValue.arrayUnion(userId),
+                        "joinCode" to codigo
+                    )
+                )
+                    .addOnSuccessListener {
+                        Log.d("Firestore", "Usuario añadido a la lista")
+                        onResult(true, null)
+                    }
+                    .addOnFailureListener { error ->
+                        Log.e("Firestore", "Error al unirse a la lista", error)
+
+                        onResult(
+                            false,
+                            "No se ha podido acceder: ${error.message}"
+                        )
+                    }
+            }
+            .addOnFailureListener { error ->
+                Log.e("Firestore", "Error buscando el código", error)
+
+                onResult(
+                    false,
+                    "Error al comprobar el código: ${error.message}"
+                )
+            }
+    }
+
+    // Guardar el estado de favorito en Firestore
+    fun updateListFavorite(
+        listId: String,
+        isFavorite: Boolean
+    ) {
+
+        db.collection("lists")
+            .document(listId)
+            .update("isFavorite", isFavorite)
+            .addOnSuccessListener {
+                Log.d("Firestore", "Favorito actualizado: $listId")
+            }
+            .addOnFailureListener { error ->
+                Log.e("Firestore", "Error al actualizar favorito", error)
+            }
     }
 }

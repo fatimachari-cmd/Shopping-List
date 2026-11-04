@@ -13,8 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -22,6 +25,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -37,8 +41,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -51,31 +57,37 @@ import com.fatimachari.listadecompra.R
 fun LoginScreen(
     onLogin: (email: String, pass: String) -> Unit,
     onRegister: () -> Unit,
-    onGoogleClick: (() -> Unit)? = null
+    onGoogleClick: (() -> Unit)? = null,
+    cargando: Boolean = false,
+    errorMsg: String? = null
 ) {
     val verde = Color(0xFF30734F)
     val fondo = Color(0xFFFAFAF8)
     val texto = Color(0xFF263A30)
     val gris = Color(0xFF78847D)
+    val focusManager = LocalFocusManager.current
 
     var correo by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
     var verContrasena by remember { mutableStateOf(false) }
-    var mensajeError by remember { mutableStateOf<String?>(null) }
+    var errorLocal by remember { mutableStateOf<String?>(null) }
+
+    val errorMostrar = errorMsg ?: errorLocal
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(fondo)
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Image(
             painter = painterResource(id = R.drawable.login_header_logo),
             contentDescription = "Logo MiCesta",
-            modifier = Modifier.size(100.dp)
+            modifier = Modifier.size(90.dp)
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -111,7 +123,7 @@ fun LoginScreen(
             value = correo,
             onValueChange = {
                 correo = it
-                mensajeError = null
+                errorLocal = null
             },
             label = { Text("Correo electrónico") },
             placeholder = { Text("ejemplo@correo.com") },
@@ -131,7 +143,8 @@ fun LoginScreen(
                 cursorColor = verde
             ),
             keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Email
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
             )
         )
 
@@ -141,7 +154,7 @@ fun LoginScreen(
             value = contrasena,
             onValueChange = {
                 contrasena = it
-                mensajeError = null
+                errorLocal = null
             },
             label = { Text("Contraseña") },
             leadingIcon = {
@@ -170,12 +183,23 @@ fun LoginScreen(
             ),
             visualTransformation = if (verContrasena) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Password
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    focusManager.clearFocus()
+                    if (correo.isBlank() || contrasena.isBlank()) {
+                        errorLocal = "Por favor ingresa tu correo y contraseña."
+                    } else {
+                        onLogin(correo.trim(), contrasena)
+                    }
+                }
             )
         )
 
-        mensajeError?.let { err ->
-            Spacer(modifier = Modifier.height(8.dp))
+        errorMostrar?.let { err ->
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = err,
                 color = Color(0xFFD32F2F),
@@ -184,19 +208,18 @@ fun LoginScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-
         Spacer(modifier = Modifier.height(20.dp))
 
         Button(
             onClick = {
+                focusManager.clearFocus()
                 if (correo.isBlank() || contrasena.isBlank()) {
-                    mensajeError = "Ingresa correo y contraseña."
+                    errorLocal = "Por favor ingresa tu correo y contraseña."
                 } else {
                     onLogin(correo.trim(), contrasena)
                 }
             },
+            enabled = !cargando,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -205,36 +228,29 @@ fun LoginScreen(
                 containerColor = verde
             )
         ) {
-            Text(
-                text = "Iniciar sesión",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "¿Todavía no tienes cuenta?",
-                fontSize = 14.sp,
-                color = texto
-            )
-
-            TextButton(onClick = onRegister) {
+            if (cargando) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
                 Text(
-                    text = "Regístrate",
-                    color = verde,
+                    text = "Iniciar sesión",
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         OutlinedButton(
-            onClick = { onGoogleClick?.invoke() },
+            onClick = {
+                focusManager.clearFocus()
+                onGoogleClick?.invoke()
+            },
+            enabled = !cargando,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -260,5 +276,27 @@ fun LoginScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "¿Todavía no tienes cuenta?",
+                fontSize = 14.sp,
+                color = texto
+            )
+
+            TextButton(onClick = onRegister) {
+                Text(
+                    text = "Regístrate",
+                    color = verde,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }

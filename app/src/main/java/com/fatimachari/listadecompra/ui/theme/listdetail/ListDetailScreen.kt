@@ -1,37 +1,25 @@
+
 package com.fatimachari.listadecompra.ui.theme.listdetail
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.fatimachari.listadecompra.data.ShoppingRepository
 import com.fatimachari.listadecompra.models.Category
@@ -40,323 +28,645 @@ import com.fatimachari.listadecompra.models.Product
 @Composable
 fun ListDetailScreen(listId: String, onBack: () -> Unit) {
 
-    // La lista de categorias (vienen de Firestore)
-    val categories = remember { mutableStateListOf<Category>() }
+    // Colores de la pantalla
+    val fondo = Color(0xFFF6F3EB)
+    val verde = Color(0xFF587653)
+    val texto = Color(0xFF30382F)
+    val blanco = Color.White
 
-    // La lista de productos (vienen de Firestore)
+    // Listas de categorías y productos
+    val categories = remember { mutableStateListOf<Category>() }
     val products = remember { mutableStateListOf<Product>() }
 
-    // Creamos variables de estado
+    // Controlar qué categorías están abiertas
+    var expandedCategories by remember {
+        mutableStateOf(setOf<String>())
+    }
+
+    // Variables para los productos
     var showDialog by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
-    var selectedCategoryId by remember { mutableStateOf(if (categories.isNotEmpty()) categories[0].id else "") }
+
+    var selectedCategoryId by remember {
+        mutableStateOf("")
+    }
+
     var editingProduct by remember { mutableStateOf<Product?>(null) }
-    var newQuantity by remember { mutableStateOf("1") }
-    var newUnit by remember { mutableStateOf("unidad") }
 
     var showCategoryDialog by remember { mutableStateOf(false) }
     var categoryName by remember { mutableStateOf("") }
     var categoryError by remember { mutableStateOf(false) }
     var editingCategory by remember { mutableStateOf<Category?>(null) }
     var categoryToDelete by remember { mutableStateOf<Category?>(null) }
+
     val scrollState = rememberScrollState()
     val repository = remember { ShoppingRepository() }
-    val doneCount = products.count { it.completed }
 
+    // Escuchar los cambios de Firebase
     DisposableEffect(listId) {
-        val categoriesListener = repository.listenCategories(listId) { newCategories ->
+
+        val categoriesListener = repository.listenCategories(listId) {
             categories.clear()
-            categories.addAll(newCategories)
+            categories.addAll(it)
         }
-        val productsListener = repository.listenProducts(listId) { newProducts ->
+
+        val productsListener = repository.listenProducts(listId) {
             products.clear()
-            products.addAll(newProducts)
+            products.addAll(it)
         }
+
         onDispose {
             categoriesListener.remove()
             productsListener.remove()
         }
     }
 
+    // Pantalla principal
     Column(
         modifier = Modifier
+            .fillMaxSize()
+            .background(fondo)
             .statusBarsPadding()
-            .verticalScroll(scrollState)
-            .padding(16.dp)
     ) {
 
-        // ponemos la flecha a la izquierda del título para volver
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-            }
-            Text("Compra semanal", style = MaterialTheme.typography.titleLarge)
-        }
-
-        // el contador de productos completados
-        Text("$doneCount de ${products.size} productos", modifier = Modifier.padding(top = 8.dp))
-
-        LinearProgressIndicator(
-            progress = { if (products.isEmpty()) 0f else doneCount.toFloat() / products.size },
+        // CONTENIDO DESPLAZABLE
+        Column(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
-                .padding(top = 8.dp)
-        )
+                .verticalScroll(scrollState)
+                .padding(16.dp)
+        ) {
 
-        // Mensaje que sale cundo no hay categorías
-        if (categories.isEmpty()) {
-            Text(
-                "Todavía no hay categorías. Pulsa «Nueva categoría» para empezar.",
-                modifier = Modifier.padding(top = 24.dp)
-            )
-        }
-
-        // Repetimos por cada categoría
-        categories.forEach { category ->
+            // CABECERA
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = verde
+                    )
+                }
+
                 Text(
-                    text = category.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
+                    text = "Compra semanal",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = texto
                 )
-                IconButton(onClick = {
-                    editingCategory = category
-                    categoryName = category.name
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // MENSAJE CUANDO NO HAY CATEGORÍAS
+            if (categories.isEmpty()) {
+                Text(
+                    text = "Todavía no hay categorías. Pulsa «Nueva categoría» para empezar.",
+                    color = texto,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            }
+
+            // MOSTRAR CATEGORÍAS
+            categories.forEachIndexed { index, category ->
+
+                // Colores suaves para las categorías
+                val colorCategoria = when (index % 4) {
+                    0 -> Color(0xFFDDEBD8)
+                    1 -> Color(0xFFDCEAF2)
+                    2 -> Color(0xFFF5E3D5)
+                    else -> Color(0xFFF3E3E8)
+                }
+
+                val isExpanded = category.id in expandedCategories
+
+                // CABECERA DE CATEGORÍA
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    // Tarjeta pulsable: abre y cierra los productos
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                expandedCategories =
+                                    if (isExpanded) {
+                                        expandedCategories - category.id
+                                    } else {
+                                        expandedCategories + category.id
+                                    }
+                            },
+                        shape = RoundedCornerShape(50.dp),
+                        color = colorCategoria
+                    ) {
+                        Text(
+                            text = category.name,
+                            color = texto,
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(
+                                horizontal = 16.dp,
+                                vertical = 12.dp
+                            )
+                        )
+                    }
+
+                    // Menú de opciones de la categoría
+                    var menuCategoriaAbierto by remember {
+                        mutableStateOf(false)
+                    }
+
+                    Box {
+                        IconButton(
+                            onClick = {
+                                menuCategoriaAbierto = true
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "Opciones",
+                                tint = verde
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = menuCategoriaAbierto,
+                            onDismissRequest = {
+                                menuCategoriaAbierto = false
+                            }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Editar") },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    editingCategory = category
+                                    categoryName = category.name
+                                    categoryError = false
+                                    showCategoryDialog = true
+                                    menuCategoriaAbierto = false
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = { Text("Eliminar") },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    categoryToDelete = category
+                                    menuCategoriaAbierto = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // MOSTRAR PRODUCTOS SOLO SI LA CATEGORÍA ESTÁ ABIERTA
+                if (isExpanded) {
+
+                    products
+                        .filter { it.categoryId == category.id }
+                        .forEach { product ->
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        bottom = 8.dp,
+                                        top = 6.dp
+                                    ),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = blanco
+                                ),
+                                elevation = CardDefaults.cardElevation(
+                                    defaultElevation = 1.dp
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(
+                                            horizontal = 12.dp,
+                                            vertical = 8.dp
+                                        ),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+
+                                    // CÍRCULO PARA MARCAR COMO COMPRADO
+                                    Box(
+                                        modifier = Modifier
+                                            .size(25.dp)
+                                            .background(
+                                                color = if (product.completed) {
+                                                    verde
+                                                } else {
+                                                    Color.Transparent
+                                                },
+                                                shape = CircleShape
+                                            )
+                                            .border(
+                                                width = 1.5.dp,
+                                                color = if (product.completed) {
+                                                    verde
+                                                } else {
+                                                    Color(0xFF899187)
+                                                },
+                                                shape = CircleShape
+                                            )
+                                            .clickable {
+                                                repository.saveProduct(
+                                                    listId,
+                                                    product.copy(
+                                                        completed = !product.completed
+                                                    )
+                                                )
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (product.completed) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Comprado",
+                                                tint = blanco,
+                                                modifier = Modifier.size(17.dp)
+                                            )
+                                        }
+                                    }
+
+                                    // Nombre del producto
+                                    Text(
+                                        text = product.name,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(start = 12.dp),
+                                        color = texto
+                                    )
+
+                                    // Menú de opciones del producto
+                                    var menuProductoAbierto by remember {
+                                        mutableStateOf(false)
+                                    }
+
+                                    Box {
+                                        IconButton(
+                                            onClick = {
+                                                menuProductoAbierto = true
+                                            }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.MoreVert,
+                                                contentDescription = "Opciones",
+                                                tint = verde
+                                            )
+                                        }
+
+                                        DropdownMenu(
+                                            expanded = menuProductoAbierto,
+                                            onDismissRequest = {
+                                                menuProductoAbierto = false
+                                            }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Editar") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Default.Edit,
+                                                        contentDescription = null
+                                                    )
+                                                },
+                                                onClick = {
+                                                    editingProduct = product
+                                                    newName = product.name
+                                                    selectedCategoryId =
+                                                        product.categoryId
+                                                    error = false
+                                                    showDialog = true
+                                                    menuProductoAbierto = false
+                                                }
+                                            )
+
+                                            DropdownMenuItem(
+                                                text = { Text("Eliminar") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Default.Delete,
+                                                        contentDescription = null
+                                                    )
+                                                },
+                                                onClick = {
+                                                    repository.deleteProduct(
+                                                        listId,
+                                                        product.id
+                                                    )
+                                                    menuProductoAbierto = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        // BOTONES FIJOS EN LA PARTE INFERIOR
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(fondo)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+        ) {
+
+            // AÑADIR PRODUCTO
+            Button(
+                onClick = {
+                    editingProduct = null
+                    newName = ""
+                    selectedCategoryId = categories.firstOrNull()?.id ?: ""
+                    error = false
+                    showDialog = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = verde
+                ),
+                enabled = categories.isNotEmpty()
+            ) {
+                Text("Añadir producto")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // NUEVA CATEGORÍA
+            OutlinedButton(
+                onClick = {
+                    editingCategory = null
+                    categoryName = ""
                     categoryError = false
                     showCategoryDialog = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = verde
+                )
+            ) {
+                Text("Nueva categoría")
+            }
+        }
+    }
+
+    // DIÁLOGO PARA CREAR O EDITAR CATEGORÍA
+    if (showCategoryDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showCategoryDialog = false
+            },
+            title = {
+                Text(
+                    if (editingCategory == null) {
+                        "Nueva categoría"
+                    } else {
+                        "Editar categoría"
+                    }
+                )
+            },
+            text = {
+                OutlinedTextField(
+                    value = categoryName,
+                    onValueChange = {
+                        categoryName = it
+                        categoryError = false
+                    },
+                    label = {
+                        Text("Nombre de la categoría")
+                    },
+                    isError = categoryError,
+                    supportingText = {
+                        if (categoryError) {
+                            Text("El nombre no puede estar vacío")
+                        }
+                    }
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (categoryName.isBlank()) {
+                        categoryError = true
+                    } else {
+                        val editing = editingCategory
+
+                        if (editing == null) {
+                            repository.saveCategory(
+                                listId,
+                                Category(name = categoryName.trim())
+                            )
+                        } else {
+                            repository.saveCategory(
+                                listId,
+                                editing.copy(name = categoryName.trim())
+                            )
+                        }
+
+                        categoryName = ""
+                        showCategoryDialog = false
+                    }
                 }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Editar categoría")
+                    Text("Guardar")
                 }
-                IconButton(onClick = { categoryToDelete = category }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Eliminar categoría")
-                }
-            }
-
-            // Repetimos por cada producto de esta categoría
-            products.filter { it.categoryId == category.id }.sortedBy { it.completed }.forEach { product ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = product.completed,
-                        onCheckedChange = { checked ->
-                            // Guarda el cambio de completado en Firestore
-                            repository.saveProduct(listId, product.copy(completed = checked))
-                        }
-                    )
-                    Text(
-                        text = product.name,
-                        modifier = Modifier.weight(1f),
-                        textDecoration = if (product.completed) TextDecoration.LineThrough
-                        else TextDecoration.None
-                    )
-                    IconButton(onClick = {
-                        editingProduct = product
-                        newName = product.name
-                        newQuantity = product.quantity.toString().removeSuffix(".0")
-                        newUnit = product.unit
-                        selectedCategoryId = product.categoryId
-                        error = false
-                        showDialog = true
-                    }) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = "Editar producto"
-                        )
-                    }
-                    IconButton(onClick = {
-                        // Elimina el producto en Firestore
-                        repository.deleteProduct(listId, product.id)
-                    }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Eliminar producto")
-                    }
-                }
-            }
-        }
-
-        // Botón para añadir producto nuevo
-        Button(
-            onClick = {
-                editingProduct = null
-                newName = ""
-                selectedCategoryId = if (categories.isNotEmpty()) categories[0].id else ""
-                error = false
-                showDialog = true
-                newQuantity = "1"
-                newUnit = "unidad"
             },
-            modifier = Modifier.padding(top = 16.dp),
-            enabled = categories.isNotEmpty()
-        ) {
-            Text("Añadir producto")
-        }
-
-        // Botón para añadir nueva categoría
-        Button(
-            onClick = {
-                editingCategory = null
-                categoryName = ""
-                categoryError = false
-                showCategoryDialog = true
+            dismissButton = {
+                TextButton(onClick = {
+                    showCategoryDialog = false
+                }) {
+                    Text("Cancelar")
+                }
             },
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            Text("Nueva categoría")
-        }
+            containerColor = fondo
+        )
+    }
 
-        // Diálogo para nueva/editar categoría
-        if (showCategoryDialog) {
-            AlertDialog(
-                onDismissRequest = { showCategoryDialog = false },
-                title = { Text(if (editingCategory == null) "Nueva categoría" else "Editar categoría") },
-                text = {
+    // DIÁLOGO PARA ELIMINAR CATEGORÍA
+    categoryToDelete?.let { category ->
+
+        AlertDialog(
+            onDismissRequest = {
+                categoryToDelete = null
+            },
+            title = {
+                Text("Eliminar categoría")
+            },
+            text = {
+                Text(
+                    "¿Seguro que quieres eliminar \"${category.name}\"? También se eliminarán todos sus productos."
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val ids = products
+                        .filter { it.categoryId == category.id }
+                        .map { it.id }
+
+                    repository.deleteCategory(
+                        listId,
+                        category.id,
+                        ids
+                    )
+
+                    expandedCategories =
+                        expandedCategories - category.id
+
+                    categoryToDelete = null
+                }) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    categoryToDelete = null
+                }) {
+                    Text("Cancelar")
+                }
+            },
+            containerColor = fondo
+        )
+    }
+
+    // DIÁLOGO PARA AÑADIR O EDITAR PRODUCTO
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showDialog = false
+            },
+            title = {
+                Text(
+                    if (editingProduct == null) {
+                        "Añadir producto"
+                    } else {
+                        "Editar producto"
+                    }
+                )
+            },
+            text = {
+                Column {
                     OutlinedTextField(
-                        value = categoryName,
-                        onValueChange = { categoryName = it; categoryError = false },
-                        label = { Text("Nombre de la categoría") },
-                        isError = categoryError,
-                        supportingText = { if (categoryError) Text("El nombre no puede estar vacío") }
-                    )
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        if (categoryName.isBlank()) {
-                            categoryError = true
-                        } else {
-                            val editing = editingCategory
-                            if (editing == null) {
-                                // Categoría nueva: sin id, Firestore le pone uno
-                                repository.saveCategory(listId, Category(name = categoryName.trim()))
-                            } else {
-                                // Editar: conserva el id y solo cambia el nombre
-                                repository.saveCategory(listId, editing.copy(name = categoryName.trim()))
-                            }
-                            categoryName = ""
-                            showCategoryDialog = false
-                        }
-                    }) {
-                        Text("Guardar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showCategoryDialog = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
+                        value = newName,
+                        onValueChange = {
+                            newName = it
+                            error = false
 
-        // Diálogo para eliminar categoría
-        val toDelete = categoryToDelete
-        if (toDelete != null) {
-            AlertDialog(
-                onDismissRequest = { categoryToDelete = null },
-                title = { Text("Eliminar categoría") },
-                text = {
-                    Text("¿Seguro que quieres eliminar \"${toDelete.name}\"? También se eliminarán todos sus productos.")
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        val ids = products.filter { it.categoryId == toDelete.id }.map { it.id }
-                        repository.deleteCategory(listId, toDelete.id, ids)
-                        categoryToDelete = null
-                    }) {
-                        Text("Eliminar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { categoryToDelete = null }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
+                            // Clasificación automática
+                            if (editingProduct == null) {
+                                val guess = guessCategoryName(it)
 
-        // Diálogo para añadir/editar producto
-        if (showDialog) {
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                title = { Text(if (editingProduct == null) "Añadir producto" else "Editar producto") },
-                text = {
-                    Column {
-                        OutlinedTextField(
-                            value = newName,
-                            onValueChange = {
-                                newName = it
-                                error = false
-                                if (editingProduct == null) {
-                                    val guess = guessCategoryName(it)
-                                    val match =
-                                        categories.firstOrNull { c -> c.name.lowercase() == guess }
-                                    if (match != null)
-                                        selectedCategoryId = match.id
+                                val match = categories.firstOrNull { c ->
+                                    c.name.lowercase() == guess
                                 }
-                            },
-                            label = { Text("Nombre del producto") },
-                            isError = error,
-                            supportingText = { if (error) Text("El nombre no me puede estar vacío") }
-                        )
 
-                        Text("Categoría", modifier = Modifier.padding(top = 16.dp))
-
-                        categories.forEach { category ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = selectedCategoryId == category.id,
-                                    onClick = { selectedCategoryId = category.id }
-                                )
-                                Text(category.name)
+                                if (match != null) {
+                                    selectedCategoryId = match.id
+                                }
+                            }
+                        },
+                        label = {
+                            Text("Nombre del producto")
+                        },
+                        isError = error,
+                        supportingText = {
+                            if (error) {
+                                Text("El nombre no puede estar vacío")
                             }
                         }
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        if (newName.isBlank()) {
-                            error = true
-                        } else {
-                            val editing = editingProduct
-                            if (editing == null) {
-                                // Guardar producto nuevo en Firestore con id vacío
-                                repository.saveProduct(
-                                    listId,
-                                    Product(
-                                        name = newName.trim(),
-                                        categoryId = selectedCategoryId
-                                    )
-                                )
-                            } else {
-                                // Guardar producto editado en Firestore con su id existente
-                                repository.saveProduct(
-                                    listId,
-                                    editing.copy(
-                                        name = newName.trim(),
-                                        categoryId = selectedCategoryId
-                                    )
-                                )
-                            }
-                            newName = ""
-                            showDialog = false
+                    )
+
+                    Text(
+                        "Categoría",
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+
+                    categories.forEach { category ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedCategoryId == category.id,
+                                onClick = {
+                                    selectedCategoryId = category.id
+                                }
+                            )
+
+                            Text(category.name)
                         }
-                    }) {
-                        Text("Guardar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDialog = false }) {
-                        Text("Cancelar")
                     }
                 }
-            )
-        }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (newName.isBlank()) {
+                        error = true
+                    } else {
+                        val editing = editingProduct
+
+                        if (editing == null) {
+                            repository.saveProduct(
+                                listId,
+                                Product(
+                                    name = newName.trim(),
+                                    categoryId = selectedCategoryId
+                                )
+                            )
+                        } else {
+                            repository.saveProduct(
+                                listId,
+                                editing.copy(
+                                    name = newName.trim(),
+                                    categoryId = selectedCategoryId
+                                )
+                            )
+                        }
+
+                        newName = ""
+                        showDialog = false
+                    }
+                }) {
+                    Text("Guardar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                }) {
+                    Text("Cancelar")
+                }
+            },
+            containerColor = fondo
+        )
     }
 }
 
-// Cada palabra clave apunta al nombre de la categoría donde debe ir
+// Palabras clave para clasificar productos automáticamente
 val keywords = mapOf(
     "leche" to "lácteos",
     "queso" to "lácteos",
@@ -372,5 +682,8 @@ val keywords = mapOf(
 
 fun guessCategoryName(productName: String): String? {
     val text = productName.trim().lowercase()
-    return keywords.entries.firstOrNull { text.contains(it.key) }?.value
+
+    return keywords.entries.firstOrNull {
+        text.contains(it.key)
+    }?.value
 }

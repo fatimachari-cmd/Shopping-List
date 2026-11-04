@@ -1,93 +1,220 @@
+
 package com.fatimachari.listadecompra
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
-import com.fatimachari.listadecompra.navigation.AppNavigation
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import com.fatimachari.listadecompra.auth.AuthRepository
+import com.fatimachari.listadecompra.ui.screen.LoginScreen
+import com.fatimachari.listadecompra.ui.screen.MyListScreen
+import com.fatimachari.listadecompra.ui.screen.OnboardingScreen
+import com.fatimachari.listadecompra.ui.screen.RegisterScreen
+import com.fatimachari.listadecompra.ui.screen.SplashScreen
 import com.fatimachari.listadecompra.ui.theme.ListadeCompraTheme
+import com.fatimachari.listadecompra.ui.theme.listdetail.ListDetailScreen
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
-            AppNavigation()
-        }
-    }
-}
+            ListadeCompraTheme {
 
-@PreviewScreenSizes
-@Composable
-fun ListadeCompraApp() {
-    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+                val authRepository = remember {
+                    AuthRepository()
+                }
 
-    NavigationSuiteScaffold(
-        navigationSuiteItems = {
-            AppDestinations.entries.forEach {
-                item(
-                    icon = {
-                        Icon(
-                            imageVector = it.icon,
-                            contentDescription = it.label
+                val currentUser by authRepository.currentUser.collectAsState()
+                val scope = rememberCoroutineScope()
+                val context = LocalContext.current
+
+                var pantalla by remember {
+                    mutableStateOf("splash")
+                }
+
+                var cargando by remember {
+                    mutableStateOf(false)
+                }
+
+                var errorMsg by remember {
+                    mutableStateOf<String?>(null)
+                }
+
+                var listaSeleccionada by remember {
+                    mutableStateOf("")
+                }
+
+                when (pantalla) {
+
+                    "splash" -> {
+                        SplashScreen(
+                            onTimeout = {
+                                pantalla = if (currentUser != null) {
+                                    "mis_listas"
+                                } else {
+                                    "onboarding"
+                                }
+                            }
                         )
-                    },
-                    label = { Text(it.label) },
-                    selected = it == currentDestination,
-                    onClick = { currentDestination = it }
-                )
+                    }
+
+                    "onboarding" -> {
+                        OnboardingScreen(
+                            onNext = {
+                                pantalla = if (currentUser != null) {
+                                    "mis_listas"
+                                } else {
+                                    "login"
+                                }
+                            },
+                            onSkip = {
+                                pantalla = if (currentUser != null) {
+                                    "mis_listas"
+                                } else {
+                                    "login"
+                                }
+                            }
+                        )
+                    }
+
+                    "login" -> {
+                        LoginScreen(
+                            cargando = cargando,
+                            errorMsg = errorMsg,
+                            onLogin = { email, password ->
+
+                                cargando = true
+                                errorMsg = null
+
+                                scope.launch {
+                                    val resultado =
+                                        authRepository.loginWithEmail(
+                                            email,
+                                            password
+                                        )
+
+                                    cargando = false
+
+                                    resultado.onSuccess { user ->
+                                        Toast.makeText(
+                                            context,
+                                            "¡Bienvenido/a ${user.email ?: ""}!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+
+                                        pantalla = "mis_listas"
+                                    }.onFailure { error ->
+                                        errorMsg =
+                                            error.localizedMessage
+                                                ?: "Error al iniciar sesión."
+                                    }
+                                }
+                            },
+                            onRegister = {
+                                errorMsg = null
+                                pantalla = "registro"
+                            },
+                            onGoogleClick = {
+                                cargando = true
+                                errorMsg = null
+
+                                scope.launch {
+                                    val resultado =
+                                        authRepository.signInWithGoogle(
+                                            this@MainActivity
+                                        )
+
+                                    cargando = false
+
+                                    resultado.onSuccess { user ->
+                                        Toast.makeText(
+                                            context,
+                                            "¡Bienvenido/a ${user.email ?: ""}!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+
+                                        pantalla = "mis_listas"
+                                    }.onFailure { error ->
+                                        errorMsg =
+                                            error.localizedMessage
+                                                ?: "Error al iniciar sesión con Google."
+                                    }
+                                }
+                            }
+                        )
+                    }
+
+                    "registro" -> {
+                        RegisterScreen(
+                            cargando = cargando,
+                            errorMsg = errorMsg,
+                            onRegister = { email, password ->
+
+                                cargando = true
+                                errorMsg = null
+
+                                scope.launch {
+                                    val resultado =
+                                        authRepository.registerWithEmail(
+                                            email,
+                                            password
+                                        )
+
+                                    cargando = false
+
+                                    resultado.onSuccess { user ->
+                                        Toast.makeText(
+                                            context,
+                                            "¡Cuenta creada correctamente!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+
+                                        pantalla = "mis_listas"
+                                    }.onFailure { error ->
+                                        errorMsg =
+                                            error.localizedMessage
+                                                ?: "Error al crear cuenta."
+                                    }
+                                }
+                            },
+                            onLogin = {
+                                errorMsg = null
+                                pantalla = "login"
+                            }
+                        )
+                    }
+
+                    "mis_listas" -> {
+                        MyListScreen(
+                            onListClick = { listId ->
+                                listaSeleccionada = listId
+                                pantalla = "detalle"
+                            },
+                            onLogout = {
+                                authRepository.signOut()
+                                errorMsg = null
+                                pantalla = "login"
+                            }
+                        )
+                    }
+
+                    "detalle" -> {
+                        ListDetailScreen(
+                            listId = listaSeleccionada,
+                            onBack = {
+                                pantalla = "mis_listas"
+                            }
+                        )
+                    }
+                }
             }
         }
-    ) {
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            Greeting(
-                name = "Android",
-                modifier = Modifier.padding(innerPadding)
-            )
-        }
-    }
-}
-
-enum class AppDestinations(
-    val label: String,
-    val icon: ImageVector,
-) {
-    HOME("Home", Icons.Default.Home),
-    FAVORITES("Favorites", Icons.Default.Favorite),
-    PROFILE("Profile", Icons.Default.AccountBox),
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ListadeCompraTheme {
-        Greeting("Android")
     }
 }
