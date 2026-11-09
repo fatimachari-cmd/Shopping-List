@@ -1,11 +1,12 @@
-
 package com.fatimachari.listadecompra.ui.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,1002 +14,609 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.auth.FirebaseAuth
-import java.util.UUID
 import com.fatimachari.listadecompra.data.ShoppingRepository
-
-// Modelo de una lista de compra
-data class ListaCompra(
-    val id: String,
-    val nombre: String,
-    val productos: Int = 0,
-    val esFavorita: Boolean = false
-)
+import com.fatimachari.listadecompra.models.Invitacion
+import com.fatimachari.listadecompra.models.ListaCompra
+import com.fatimachari.listadecompra.ui.theme.*
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.ListenerRegistration
+import java.util.UUID
 
 @Composable
 fun MyListScreen(
     onListClick: (String) -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val repository: ShoppingRepository = remember { ShoppingRepository() }
 
-    // Colores de la aplicación
-    val fondo = Color(0xFFF6F3EB)
-    val verde = Color(0xFF587653)
-    val texto = Color(0xFF30382F)
-    val gris = Color(0xFF899187)
-    val blanco = Color(0xFFFFFFFF)
-    val rosa = Color(0xFFD8757B)
+    // ===== USUARIO CONECTADO =====
+    val usuario: FirebaseUser? = FirebaseAuth.getInstance().currentUser
+    val miId: String = usuario?.uid ?: ""
+    val miCorreo: String = usuario?.email ?: ""
 
-    val repository = remember { ShoppingRepository() }
+    // Nombre: el que escribió al registrarse (o Google). Si no hay, usamos el correo
+    val nombreGuardado: String = usuario?.displayName ?: ""
+    val miNombre: String = if (nombreGuardado.isBlank()) miCorreo.substringBefore("@") else nombreGuardado
 
-    // Obtener el usuario conectado
-    val ownerId = FirebaseAuth.getInstance()
-        .currentUser?.uid.orEmpty()
-
-    // Estados de las listas
-    var listas by remember {
-        mutableStateOf(listOf<ListaCompra>())
-    }
-
-    // Contador de productos
-    val productCounts = remember {
-        mutableStateMapOf<String, Int>()
-    }
-
-    // Cargar listas propias y compartidas
-    DisposableEffect(ownerId) {
-
-        val listener = if (ownerId.isNotBlank()) {
-            repository.listenLists(ownerId) { datos ->
-
-                listas = datos.mapNotNull { dato ->
-
-                    val id = dato["id"] as? String
-                        ?: return@mapNotNull null
-
-                    ListaCompra(
-                        id = id,
-                        nombre = dato["title"] as? String ?: "",
-                        productos = (dato["productCount"] as? Long)?.toInt() ?: 0,
-                        esFavorita = dato["isFavorite"] as? Boolean ?: false
-                    )
-                }
+    // Tipo de cuenta: Google o correo
+    var tipoCuenta: String = "Correo y contraseña"
+    if (usuario != null) {
+        for (proveedor in usuario.providerData) {
+            if (proveedor.providerId == "google.com") {
+                tipoCuenta = "Google"
             }
-        } else {
-            null
-        }
-
-        onDispose {
-            listener?.remove()
         }
     }
 
-    // Escuchar los productos de cada lista
+    // ===== DATOS DE LA PANTALLA =====
+    var listas: List<ListaCompra> by remember { mutableStateOf(listOf()) }
+    var invitaciones: List<Invitacion> by remember { mutableStateOf(listOf()) }
+    val numProductos: MutableMap<String, Int> = remember { mutableStateMapOf() }
+    var pestana: String by remember { mutableStateOf("Listas") }
+
+    // ===== VENTANAS ABIERTAS O CERRADAS =====
+    var mostrarCrear: Boolean by remember { mutableStateOf(false) }
+    var listaAEditar: ListaCompra? by remember { mutableStateOf(null) }
+    var listaAEliminar: ListaCompra? by remember { mutableStateOf(null) }
+    var listaAInvitar: ListaCompra? by remember { mutableStateOf(null) }
+
+    // ===== ESCUCHAR FIRESTORE =====
+
+    // Mis listas
+    DisposableEffect(miId) {
+        val escucha = repository.listenLists(miId) { datos ->
+            val nuevasListas = mutableListOf<ListaCompra>()
+
+            for (dato in datos) {
+                val lista = ListaCompra(
+                    id = dato["id"].toString(),
+                    nombre = dato["title"].toString(),
+                    esFavorita = dato["isFavorite"] == true,
+                    esMia = dato["ownerId"] == miId
+                )
+                nuevasListas.add(lista)
+            }
+
+            listas = nuevasListas
+        }
+        onDispose { escucha.remove() }
+    }
+
+    // Invitaciones que me han enviado
+    DisposableEffect(miCorreo) {
+        val escucha = repository.listenInvitations(miCorreo) { datos ->
+            val nuevas = mutableListOf<Invitacion>()
+
+            for (dato in datos) {
+                val invitacion = Invitacion(
+                    id = dato["id"].toString(),
+                    listId = dato["listId"].toString(),
+                    nombreLista = dato["listName"].toString(),
+                    deQuien = dato["fromName"].toString()
+                )
+                nuevas.add(invitacion)
+            }
+
+            invitaciones = nuevas
+        }
+        onDispose { escucha.remove() }
+    }
+
+    // Número de productos de cada lista
     DisposableEffect(listas.map { it.id }) {
+        val escuchas = mutableListOf<ListenerRegistration>()
 
-        val productListeners = listas.map { lista ->
-            repository.listenProducts(lista.id) { productos ->
-                productCounts[lista.id] = productos.size
+        for (lista in listas) {
+            val escucha = repository.listenProducts(lista.id) { productos ->
+                numProductos[lista.id] = productos.size
             }
+            escuchas.add(escucha)
         }
 
         onDispose {
-            productListeners.forEach { it.remove() }
+            for (escucha in escuchas) {
+                escucha.remove()
+            }
         }
     }
 
-    var pantalla by remember {
-        mutableStateOf("Listas")
+    // Listas que se enseñan según la pestaña
+    val listasQueSeVen = mutableListOf<ListaCompra>()
+    for (lista in listas) {
+        if (pestana == "Listas" || lista.esFavorita) {
+            listasQueSeVen.add(lista)
+        }
     }
 
-    // Estados para crear listas
-    var mostrarVentana by remember {
-        mutableStateOf(false)
-    }
-
-    var nombreNuevo by remember {
-        mutableStateOf("")
-    }
-
-    // Estados para editar listas
-    var listaAEditar by remember {
-        mutableStateOf<ListaCompra?>(null)
-    }
-
-    var nombreEditado by remember {
-        mutableStateOf("")
-    }
-
-    // Estado para eliminar listas
-    var listaAEliminar by remember {
-        mutableStateOf<ListaCompra?>(null)
-    }
-
-    // Estados para compartir listas
-    var listaParaCompartir by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var codigoCompartir by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var cargandoCodigo by remember {
-        mutableStateOf(false)
-    }
-
-    // Estados para unirse a una lista
-    var mostrarUnirse by remember {
-        mutableStateOf(false)
-    }
-
-    var codigoIntroducido by remember {
-        mutableStateOf("")
-    }
-
-    var mensajeUnirse by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var cargandoUnirse by remember {
-        mutableStateOf(false)
-    }
-
-    // Filtrar listas favoritas
-    val listasVisibles = if (pantalla == "Favoritos") {
-        listas.filter { it.esFavorita }
-    } else {
-        listas
-    }
-
+    // ===== PANTALLA =====
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(fondo)
-            .statusBarsPadding()
+            .background(Fondo)
     ) {
 
-        // CABECERA
+        // Cabecera
         Column(
-            modifier = Modifier.padding(22.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Principal, RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+                .statusBarsPadding()
+                .padding(24.dp)
         ) {
-
-            Text(
-                text = "MiCesta",
-                color = verde,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Text(
-                text = when (pantalla) {
-                    "Favoritos" -> "Mis favoritos"
-                    "Perfil" -> "Mi perfil"
-                    else -> "Mis listas"
-                },
-                fontSize = 25.sp,
-                fontWeight = FontWeight.Bold,
-                color = texto
-            )
-
-            Spacer(modifier = Modifier.height(5.dp))
-
-            Text(
-                text = when (pantalla) {
-                    "Favoritos" -> "Tus listas favoritas"
-                    "Perfil" -> "Gestiona tu cuenta"
-                    else -> "Organiza tus compras fácilmente"
-                },
-                fontSize = 14.sp,
-                color = gris
-            )
+            Text("MiCesta", color = PrincipalClaro, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            val titulo = when (pestana) {
+                "Favoritos" -> "Mis favoritos"
+                "Perfil" -> "Mi perfil"
+                else -> "Mis listas"
+            }
+            Text(titulo, color = Blanco, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         }
 
-        // CONTENIDO PRINCIPAL
-        when (pantalla) {
+        // Contenido
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(20.dp)
+        ) {
+            if (pestana == "Perfil") {
 
-            // PANTALLA DE PERFIL
-            "Perfil" -> {
+                // Pestaña Perfil
+                PantallaPerfil(
+                    nombre = miNombre,
+                    correo = miCorreo,
+                    numListas = listas.size,
+                    numCompartidas = listas.count { !it.esMia },
+                    tipoCuenta = tipoCuenta,
+                    onLogout = onLogout
+                )
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(22.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+            } else {
 
-                    Spacer(modifier = Modifier.height(35.dp))
+                // Invitaciones pendientes (solo en la pestaña Listas)
+                if (pestana == "Listas") {
+                    for (invitacion in invitaciones) {
+                        TarjetaInvitacion(
+                            invitacion = invitacion,
+                            onAceptar = { repository.acceptInvitation(invitacion.id, invitacion.listId, miId) },
+                            onRechazar = { repository.rejectInvitation(invitacion.id) }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
 
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "Perfil",
-                        modifier = Modifier.size(90.dp),
-                        tint = verde
-                    )
+                if (listasQueSeVen.isEmpty()) {
 
-                    Spacer(modifier = Modifier.height(15.dp))
-
-                    Text(
-                        text = "Mi cuenta",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = texto
-                    )
-
-                    Spacer(modifier = Modifier.height(30.dp))
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = blanco
-                        ),
-                        shape = RoundedCornerShape(18.dp)
+                    // Mensaje cuando no hay listas
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
+                        Icon(Icons.Filled.List, null, tint = Principal, modifier = Modifier.size(64.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (pestana == "Favoritos") {
+                            Text("Aún no tienes favoritas", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Texto)
+                            Text("Márcalas desde el menú ⋮ de cada lista", color = Gris)
+                        } else {
+                            Text("Todavía no hay listas", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Texto)
+                            Text("Crea una con el botón de abajo", color = Gris)
+                        }
+                    }
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onLogout()
-                                }
-                                .padding(18.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                } else {
 
-                            Icon(
-                                imageVector = Icons.Default.Logout,
-                                contentDescription = null,
-                                tint = Color.Red
-                            )
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Text(
-                                text = "Cerrar sesión",
-                                color = Color.Red,
-                                fontWeight = FontWeight.SemiBold
-                            )
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            Icon(
-                                imageVector = Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                tint = gris
+                    // Tarjetas de las listas
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(listasQueSeVen) { lista ->
+                            TarjetaLista(
+                                lista = lista,
+                                productos = numProductos[lista.id] ?: 0,
+                                onAbrir = { onListClick(lista.id) },
+                                onFavorito = { repository.updateListFavorite(lista.id, !lista.esFavorita) },
+                                onEditar = { listaAEditar = lista },
+                                onInvitar = { listaAInvitar = lista },
+                                onEliminar = { listaAEliminar = lista }
                             )
                         }
                     }
                 }
-            }
 
-            // PANTALLA DE LISTAS Y FAVORITOS
-            else -> {
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 20.dp)
-                ) {
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                // Botón crear lista
+                if (pestana == "Listas") {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = { mostrarCrear = true },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
                     ) {
-
-                        Text(
-                            text = if (pantalla == "Favoritos")
-                                "Listas favoritas"
-                            else "Todas mis listas",
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = texto
-                        )
-
-                        Text(
-                            text = "${listasVisibles.size} listas",
-                            color = gris,
-                            fontSize = 13.sp
-                        )
+                        Icon(Icons.Filled.Add, null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Crear nueva lista", fontSize = 16.sp)
                     }
-
-                    Spacer(modifier = Modifier.height(15.dp))
-
-                    // ESTADO VACÍO
-                    if (listasVisibles.isEmpty()) {
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-
-                                Icon(
-                                    imageVector = if (pantalla == "Favoritos")
-                                        Icons.Default.FavoriteBorder
-                                    else Icons.Default.ShoppingCart,
-                                    contentDescription = null,
-                                    tint = verde,
-                                    modifier = Modifier.size(65.dp)
-                                )
-
-                                Spacer(modifier = Modifier.height(15.dp))
-
-                                Text(
-                                    text = if (pantalla == "Favoritos")
-                                        "Todavía no tienes favoritos"
-                                    else "Todavía no tienes listas",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = texto
-                                )
-
-                                Spacer(modifier = Modifier.height(5.dp))
-
-                                Text(
-                                    text = if (pantalla == "Favoritos")
-                                        "Marca tus listas como favoritas"
-                                    else "Crea tu primera lista de compra",
-                                    color = gris,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
-
-                    } else {
-
-                        // MOSTRAR TARJETAS
-                        LazyColumn(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(bottom = 15.dp)
-                        ) {
-
-                            items(
-                                items = listasVisibles,
-                                key = { it.id }
-                            ) { lista ->
-
-                                var menuAbierto by remember {
-                                    mutableStateOf(false)
-                                }
-
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(20.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = blanco
-                                    ),
-                                    elevation = CardDefaults.cardElevation(
-                                        defaultElevation = 2.dp
-                                    )
-                                ) {
-
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-
-                                        // ICONO DE COMPRA
-                                        Icon(
-                                            imageVector = Icons.Default.ShoppingBasket,
-                                            contentDescription = null,
-                                            tint = verde,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-
-                                        Spacer(modifier = Modifier.width(12.dp))
-
-                                        // NOMBRE Y PRODUCTOS
-                                        Column(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clickable {
-                                                    onListClick(lista.id)
-                                                }
-                                        ) {
-
-                                            Text(
-                                                text = lista.nombre,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 16.sp,
-                                                color = texto
-                                            )
-
-                                            Text(
-                                                text = "${productCounts[lista.id] ?: 0} productos",
-                                                fontSize = 13.sp,
-                                                color = gris
-                                            )
-                                        }
-
-                                        // MENÚ DE OPCIONES
-                                        Box {
-
-                                            IconButton(
-                                                onClick = {
-                                                    menuAbierto = true
-                                                }
-                                            ) {
-
-                                                Icon(
-                                                    imageVector = Icons.Default.MoreVert,
-                                                    contentDescription = "Opciones",
-                                                    tint = gris
-                                                )
-                                            }
-
-                                            DropdownMenu(
-                                                expanded = menuAbierto,
-                                                onDismissRequest = {
-                                                    menuAbierto = false
-                                                }
-                                            ) {
-
-                                                // EDITAR
-                                                DropdownMenuItem(
-                                                    text = {
-                                                        Text("Editar")
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(
-                                                            Icons.Default.Edit,
-                                                            contentDescription = null
-                                                        )
-                                                    },
-                                                    onClick = {
-                                                        nombreEditado = lista.nombre
-                                                        listaAEditar = lista
-                                                        menuAbierto = false
-                                                    }
-                                                )
-
-                                                // FAVORITOS
-                                                DropdownMenuItem(
-                                                    text = {
-                                                        Text(
-                                                            if (lista.esFavorita)
-                                                                "Quitar de favoritos"
-                                                            else
-                                                                "Añadir a favoritos"
-                                                        )
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(
-                                                            imageVector = if (lista.esFavorita)
-                                                                Icons.Default.Favorite
-                                                            else
-                                                                Icons.Default.FavoriteBorder,
-                                                            contentDescription = null,
-                                                            tint = rosa
-                                                        )
-                                                    },
-                                                    onClick = {
-                                                        repository.updateListFavorite(
-                                                            listId = lista.id,
-                                                            isFavorite = !lista.esFavorita
-                                                        )
-                                                        menuAbierto = false
-                                                    }
-                                                )
-
-                                                // COMPARTIR
-                                                DropdownMenuItem(
-                                                    text = {
-                                                        Text("Compartir")
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(
-                                                            Icons.Default.Share,
-                                                            contentDescription = null
-                                                        )
-                                                    },
-                                                    onClick = {
-
-                                                        listaParaCompartir = lista.id
-                                                        codigoCompartir = null
-                                                        cargandoCodigo = true
-                                                        menuAbierto = false
-
-                                                        repository.createShareCode(
-                                                            listId = lista.id,
-                                                            ownerId = ownerId
-                                                        ) { codigo ->
-
-                                                            codigoCompartir = codigo
-                                                            cargandoCodigo = false
-                                                        }
-                                                    }
-                                                )
-
-                                                // ELIMINAR
-                                                DropdownMenuItem(
-                                                    text = {
-                                                        Text("Eliminar")
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(
-                                                            Icons.Default.Delete,
-                                                            contentDescription = null
-                                                        )
-                                                    },
-                                                    onClick = {
-                                                        listaAEliminar = lista
-                                                        menuAbierto = false
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // BOTONES DE LISTAS
-                    if (pantalla == "Listas") {
-
-                        Button(
-                            onClick = {
-                                nombreNuevo = ""
-                                mostrarVentana = true
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(55.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = verde
-                            )
-                        ) {
-
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = null
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = "Crear nueva lista",
-                                fontSize = 16.sp
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        OutlinedButton(
-                            onClick = {
-                                codigoIntroducido = ""
-                                mensajeUnirse = null
-                                mostrarUnirse = true
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(55.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-
-                            Icon(
-                                Icons.Default.GroupAdd,
-                                contentDescription = null
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text("Unirse a una lista")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(15.dp))
                 }
             }
         }
 
-        // NAVEGACIÓN INFERIOR
-        NavigationBar(
-            containerColor = blanco
-        ) {
-
+        // Pestañas de abajo
+        NavigationBar(containerColor = Blanco) {
             NavigationBarItem(
-                selected = pantalla == "Listas",
-                onClick = {
-                    pantalla = "Listas"
-                },
-                icon = {
-                    Icon(Icons.Default.List, contentDescription = null)
-                },
-                label = {
-                    Text("Listas")
-                }
+                selected = pestana == "Listas",
+                onClick = { pestana = "Listas" },
+                icon = { Icon(Icons.Filled.List, null) },
+                label = { Text("Listas") }
             )
-
             NavigationBarItem(
-                selected = pantalla == "Favoritos",
-                onClick = {
-                    pantalla = "Favoritos"
-                },
-                icon = {
-                    Icon(Icons.Default.Favorite, contentDescription = null)
-                },
-                label = {
-                    Text("Favoritos")
-                }
+                selected = pestana == "Favoritos",
+                onClick = { pestana = "Favoritos" },
+                icon = { Icon(Icons.Filled.Favorite, null) },
+                label = { Text("Favoritos") }
             )
-
             NavigationBarItem(
-                selected = pantalla == "Perfil",
-                onClick = {
-                    pantalla = "Perfil"
-                },
-                icon = {
-                    Icon(Icons.Default.Person, contentDescription = null)
-                },
-                label = {
-                    Text("Perfil")
-                }
+                selected = pestana == "Perfil",
+                onClick = { pestana = "Perfil" },
+                icon = { Icon(Icons.Filled.Person, null) },
+                label = { Text("Perfil") }
             )
         }
     }
 
-    // DIÁLOGO PARA CREAR UNA LISTA
-    if (mostrarVentana) {
+    // ===== VENTANAS =====
 
-        AlertDialog(
-            onDismissRequest = {
-                mostrarVentana = false
+    // Crear lista
+    if (mostrarCrear) {
+        VentanaTexto(
+            titulo = "Nueva lista",
+            etiqueta = "Nombre de la lista",
+            textoInicial = "",
+            boton = "Crear",
+            onAceptar = { nombre ->
+                repository.createList(UUID.randomUUID().toString(), nombre, miId) { }
+                mostrarCrear = false
             },
-            title = {
-                Text("Nueva lista")
-            },
-            text = {
-
-                OutlinedTextField(
-                    value = nombreNuevo,
-                    onValueChange = {
-                        nombreNuevo = it
-                    },
-                    label = {
-                        Text("Nombre")
-                    },
-                    placeholder = {
-                        Text("Ej. Compra semanal")
-                    },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-
-                TextButton(
-                    onClick = {
-
-                        if (nombreNuevo.isNotBlank()) {
-
-                            val nuevaLista = ListaCompra(
-                                id = UUID.randomUUID().toString(),
-                                nombre = nombreNuevo.trim()
-                            )
-
-                            repository.createList(
-                                listId = nuevaLista.id,
-                                title = nuevaLista.nombre,
-                                ownerId = ownerId
-                            ) { correcto ->
-
-                                if (correcto) {
-                                    mostrarVentana = false
-                                    nombreNuevo = ""
-                                }
-                            }
-                        }
-                    }
-                ) {
-                    Text("Crear", color = verde)
-                }
-            },
-            dismissButton = {
-
-                TextButton(
-                    onClick = {
-                        mostrarVentana = false
-                    }
-                ) {
-                    Text("Cancelar", color = gris)
-                }
-            },
-            containerColor = blanco
+            onCancelar = { mostrarCrear = false }
         )
     }
 
-    // DIÁLOGO PARA EDITAR UNA LISTA
-    listaAEditar?.let { lista ->
-
-        AlertDialog(
-            onDismissRequest = {
+    // Cambiar nombre
+    if (listaAEditar != null) {
+        VentanaTexto(
+            titulo = "Cambiar nombre",
+            etiqueta = "Nombre de la lista",
+            textoInicial = listaAEditar!!.nombre,
+            boton = "Guardar",
+            onAceptar = { nombre ->
+                repository.updateListName(listaAEditar!!.id, nombre)
                 listaAEditar = null
             },
-            title = {
-                Text("Editar lista")
-            },
-            text = {
-
-                OutlinedTextField(
-                    value = nombreEditado,
-                    onValueChange = {
-                        nombreEditado = it
-                    },
-                    label = {
-                        Text("Nombre")
-                    },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-
-                TextButton(
-                    onClick = {
-
-                        if (nombreEditado.isNotBlank()) {
-
-                            listas = listas.map { otra ->
-
-                                if (otra.id == lista.id) {
-                                    otra.copy(
-                                        nombre = nombreEditado.trim()
-                                    )
-                                } else {
-                                    otra
-                                }
-                            }
-
-                            listaAEditar = null
-                        }
-                    }
-                ) {
-                    Text("Guardar", color = verde)
-                }
-            },
-            dismissButton = {
-
-                TextButton(
-                    onClick = {
-                        listaAEditar = null
-                    }
-                ) {
-                    Text("Cancelar", color = gris)
-                }
-            },
-            containerColor = blanco
+            onCancelar = { listaAEditar = null }
         )
     }
 
-    // DIÁLOGO PARA ELIMINAR UNA LISTA
-    listaAEliminar?.let { lista ->
+    // Invitar a alguien por correo
+    if (listaAInvitar != null) {
+        val lista = listaAInvitar!!
+        var error by remember { mutableStateOf("") }
 
-        AlertDialog(
-            onDismissRequest = {
-                listaAEliminar = null
-            },
-            title = {
-                Text("Eliminar lista")
-            },
-            text = {
-                Text("¿Seguro que quieres eliminar \"${lista.nombre}\"?")
-            },
-            confirmButton = {
-
-                TextButton(
-                    onClick = {
-
-                        listas = listas.filterNot {
-                            it.id == lista.id
-                        }
-
-                        listaAEliminar = null
+        VentanaTexto(
+            titulo = "Invitar a \"${lista.nombre}\"",
+            etiqueta = "Correo de la otra persona",
+            textoInicial = "",
+            boton = "Enviar",
+            error = error,
+            onAceptar = { correo ->
+                if (!correo.contains("@")) {
+                    error = "Escribe un correo válido"
+                } else if (correo.equals(miCorreo, ignoreCase = true)) {
+                    error = "Ese es tu propio correo"
+                } else {
+                    repository.sendInvitation(lista.id, lista.nombre, miNombre, correo) { correcto ->
+                        val mensaje = if (correcto) "Invitación enviada" else "No se pudo enviar"
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
                     }
-                ) {
-                    Text("Eliminar", color = Color.Red)
+                    listaAInvitar = null
                 }
             },
-            dismissButton = {
-
-                TextButton(
-                    onClick = {
-                        listaAEliminar = null
-                    }
-                ) {
-                    Text("Cancelar", color = gris)
-                }
-            },
-            containerColor = blanco
+            onCancelar = { listaAInvitar = null }
         )
     }
 
-    // DIÁLOGO PARA COMPARTIR UNA LISTA
-    listaParaCompartir?.let {
-
+    // Eliminar lista (o salir si es de otra persona)
+    if (listaAEliminar != null) {
+        val lista = listaAEliminar!!
         AlertDialog(
-            onDismissRequest = {
-                listaParaCompartir = null
-            },
-            title = {
-                Text("Compartir lista")
-            },
+            onDismissRequest = { listaAEliminar = null },
+            title = { Text(if (lista.esMia) "Eliminar lista" else "Salir de la lista") },
             text = {
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-
-                    if (cargandoCodigo) {
-
-                        CircularProgressIndicator(color = verde)
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Text("Generando código...")
-
-                    } else if (codigoCompartir != null) {
-
-                        Text("Comparte este código con otras personas:")
-
-                        Spacer(modifier = Modifier.height(15.dp))
-
-                        Text(
-                            text = codigoCompartir!!,
-                            fontSize = 25.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = verde
-                        )
-
+                if (lista.esMia) {
+                    Text("Se borrará \"${lista.nombre}\" para todos. ¿Seguro?")
+                } else {
+                    Text("Ya no verás \"${lista.nombre}\". ¿Seguro?")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (lista.esMia) {
+                        repository.deleteList(lista.id)
                     } else {
-
-                        Text("No se ha podido generar el código. Inténtalo de nuevo.")
+                        repository.leaveList(lista.id, miId)
                     }
+                    listaAEliminar = null
+                }) {
+                    Text(if (lista.esMia) "Eliminar" else "Salir", color = Rojo)
                 }
             },
-            confirmButton = {
-
-                TextButton(
-                    onClick = {
-                        listaParaCompartir = null
-                    }
-                ) {
-                    Text("Cerrar", color = verde)
-                }
-            },
-            containerColor = blanco
+            dismissButton = {
+                TextButton(onClick = { listaAEliminar = null }) { Text("Cancelar", color = Gris) }
+            }
         )
     }
+}
 
-    // DIÁLOGO PARA UNIRSE A UNA LISTA
-    if (mostrarUnirse) {
+// ===== TARJETA DE UNA LISTA =====
+@Composable
+fun TarjetaLista(
+    lista: ListaCompra,
+    productos: Int,
+    onAbrir: () -> Unit,
+    onFavorito: () -> Unit,
+    onEditar: () -> Unit,
+    onInvitar: () -> Unit,
+    onEliminar: () -> Unit
+) {
+    var menuAbierto by remember { mutableStateOf(false) }
 
-        AlertDialog(
-            onDismissRequest = {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Blanco),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onAbrir() }
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
 
-                if (!cargandoUnirse) {
-                    mostrarUnirse = false
+            // Icono de lista
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(PrincipalClaro, RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Filled.List, null, tint = Principal)
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            // Nombre y número de productos
+            Column(modifier = Modifier.weight(1f)) {
+                Text(lista.nombre, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Texto)
+                if (lista.esMia) {
+                    Text("$productos productos", fontSize = 13.sp, color = Gris)
+                } else {
+                    Text("$productos productos · Compartida", fontSize = 13.sp, color = Principal)
                 }
-            },
-            title = {
-                Text("Unirse a una lista")
-            },
-            text = {
+            }
 
-                Column {
+            // Menú de los 3 puntos
+            Box {
+                IconButton(onClick = { menuAbierto = true }) {
+                    Icon(Icons.Filled.MoreVert, "Opciones", tint = Gris)
+                }
+                DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
 
-                    Text("Introduce el código de invitación:")
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    OutlinedTextField(
-                        value = codigoIntroducido,
-                        onValueChange = {
-                            codigoIntroducido = it.uppercase()
-                            mensajeUnirse = null
+                    // Favorito
+                    DropdownMenuItem(
+                        text = { Text(if (lista.esFavorita) "Quitar de favoritos" else "Añadir a favoritos") },
+                        leadingIcon = {
+                            Icon(
+                                if (lista.esFavorita) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                null,
+                                tint = if (lista.esFavorita) Rojo else Gris
+                            )
                         },
-                        label = {
-                            Text("Código")
-                        },
-                        singleLine = true
+                        onClick = { menuAbierto = false; onFavorito() }
                     )
 
-                    mensajeUnirse?.let { mensaje ->
+                    // Cambiar nombre
+                    DropdownMenuItem(
+                        text = { Text("Cambiar nombre") },
+                        leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                        onClick = { menuAbierto = false; onEditar() }
+                    )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = mensaje,
-                            color = Color.Red,
-                            fontSize = 13.sp
+                    // Invitar (solo si la lista es mía)
+                    if (lista.esMia) {
+                        DropdownMenuItem(
+                            text = { Text("Invitar") },
+                            leadingIcon = { Icon(Icons.Filled.PersonAdd, null) },
+                            onClick = { menuAbierto = false; onInvitar() }
                         )
                     }
+
+                    // Eliminar o salir
+                    DropdownMenuItem(
+                        text = { Text(if (lista.esMia) "Eliminar" else "Salir de la lista", color = Rojo) },
+                        leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Rojo) },
+                        onClick = { menuAbierto = false; onEliminar() }
+                    )
                 }
-            },
-            confirmButton = {
-
-                TextButton(
-                    enabled = !cargandoUnirse,
-                    onClick = {
-
-                        val userId = FirebaseAuth.getInstance()
-                            .currentUser?.uid.orEmpty()
-
-                        if (codigoIntroducido.isBlank()) {
-
-                            mensajeUnirse = "Introduce un código."
-
-                        } else if (userId.isBlank()) {
-
-                            mensajeUnirse = "Debes iniciar sesión."
-
-                        } else {
-
-                            cargandoUnirse = true
-
-                            repository.joinListWithCode(
-                                code = codigoIntroducido,
-                                userId = userId
-                            ) { correcto, error ->
-
-                                cargandoUnirse = false
-
-                                if (correcto) {
-
-                                    mostrarUnirse = false
-                                    codigoIntroducido = ""
-                                    mensajeUnirse = null
-
-                                } else {
-
-                                    mensajeUnirse = error
-                                        ?: "No se ha podido unir."
-                                }
-                            }
-                        }
-                    }
-                ) {
-
-                    if (cargandoUnirse) {
-
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = verde
-                        )
-
-                    } else {
-
-                        Text("Unirse", color = verde)
-                    }
-                }
-            },
-            dismissButton = {
-
-                TextButton(
-                    enabled = !cargandoUnirse,
-                    onClick = {
-                        mostrarUnirse = false
-                    }
-                ) {
-                    Text("Cancelar", color = gris)
-                }
-            },
-            containerColor = blanco
-        )
+            }
+        }
     }
+}
+
+// ===== TARJETA DE INVITACIÓN =====
+@Composable
+fun TarjetaInvitacion(
+    invitacion: Invitacion,
+    onAceptar: () -> Unit,
+    onRechazar: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = PrincipalClaro),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("${invitacion.deQuien} te invita a unirte a", fontSize = 13.sp, color = Texto)
+            Text(invitacion.nombreLista, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Texto)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onRechazar) { Text("Rechazar", color = Texto) }
+                Button(onClick = onAceptar, shape = RoundedCornerShape(12.dp)) { Text("Aceptar") }
+            }
+        }
+    }
+}
+
+// ===== PERFIL =====
+@Composable
+fun PantallaPerfil(
+    nombre: String,
+    correo: String,
+    numListas: Int,
+    numCompartidas: Int,
+    tipoCuenta: String,
+    onLogout: () -> Unit
+) {
+    // Letra de la foto: la primera del nombre
+    val inicial = if (nombre.isNotEmpty()) nombre.substring(0, 1).uppercase() else "?"
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Foto con la inicial
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .background(PrincipalClaro, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(inicial, fontSize = 40.sp, fontWeight = FontWeight.Bold, color = Principal)
+        }
+
+        // Nombre y correo
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(nombre, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Texto)
+        Text(correo, fontSize = 14.sp, color = Gris)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Datos de la cuenta
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Blanco),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                FilaDato(Icons.Filled.List, "Mis listas", "$numListas")
+                Spacer(modifier = Modifier.height(14.dp))
+                FilaDato(Icons.Filled.Group, "Compartidas conmigo", "$numCompartidas")
+                Spacer(modifier = Modifier.height(14.dp))
+                FilaDato(Icons.Filled.Lock, "Cuenta", tipoCuenta)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Cerrar sesión
+        OutlinedButton(
+            onClick = onLogout,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+        ) {
+            Icon(Icons.Filled.Logout, null, tint = Rojo)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Cerrar sesión", color = Rojo)
+        }
+    }
+}
+
+// Una fila del perfil: icono + título + valor
+@Composable
+fun FilaDato(icono: ImageVector,titulo: String, valor: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(PrincipalClaro, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icono, null, tint = Principal)
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(titulo, fontSize = 12.sp, color = Gris)
+            Text(valor, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Texto)
+        }
+    }
+}
+
+// ===== VENTANA CON UN CAMPO DE TEXTO =====
+@Composable
+fun VentanaTexto(
+    titulo: String,
+    etiqueta: String,
+    textoInicial: String,
+    boton: String,
+    error: String = "",
+    onAceptar: (String) -> Unit,
+    onCancelar: () -> Unit
+) {
+    var texto by remember { mutableStateOf(textoInicial) }
+
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        title = { Text(titulo) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = texto,
+                    onValueChange = { texto = it },
+                    label = { Text(etiqueta) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp)
+                )
+                if (error != "") {
+                    Text(error, color = Rojo, fontSize = 13.sp)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { if (texto.isNotBlank()) onAceptar(texto.trim()) }) {
+                Text(boton)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) { Text("Cancelar", color = Gris) }
+        }
+    )
 }
