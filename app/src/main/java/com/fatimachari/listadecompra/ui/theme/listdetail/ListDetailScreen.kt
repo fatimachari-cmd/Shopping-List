@@ -1,6 +1,6 @@
-
 package com.fatimachari.listadecompra.ui.theme.listdetail
 
+import com.fatimachari.listadecompra.ui.theme.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,16 +11,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fatimachari.listadecompra.data.ShoppingRepository
 import com.fatimachari.listadecompra.models.Category
 import com.fatimachari.listadecompra.models.Product
@@ -29,16 +37,15 @@ import com.fatimachari.listadecompra.models.Product
 fun ListDetailScreen(listId: String, onBack: () -> Unit) {
 
     // Colores de la pantalla
-    val fondo = Color(0xFFF6F3EB)
-    val verde = Color(0xFF587653)
-    val texto = Color(0xFF30382F)
+    val fondo = Fondo
+    val principal = Principal
+    val texto = Texto
     val blanco = Color.White
 
     // Listas de categorías y productos
     val categories = remember { mutableStateListOf<Category>() }
     val products = remember { mutableStateListOf<Product>() }
 
-    // Controlar qué categorías están abiertas
     var expandedCategories by remember {
         mutableStateOf(setOf<String>())
     }
@@ -63,6 +70,9 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
     val scrollState = rememberScrollState()
     val repository = remember { ShoppingRepository() }
 
+    // Nombre real de la lista (se lee de Firestore)
+    var nombreLista by remember { mutableStateOf("") }
+
     // Escuchar los cambios de Firebase
     DisposableEffect(listId) {
 
@@ -76,13 +86,17 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
             products.addAll(it)
         }
 
+        val nameListener = repository.listenListName(listId) {
+            nombreLista = it
+        }
+
         onDispose {
             categoriesListener.remove()
             productsListener.remove()
+            nameListener.remove()
         }
     }
 
-    // Pantalla principal
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -90,7 +104,6 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
             .statusBarsPadding()
     ) {
 
-        // CONTENIDO DESPLAZABLE
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -99,50 +112,96 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                 .padding(16.dp)
         ) {
 
-            // CABECERA
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
+            // ===== CABECERA =====
+            val comprados = products.count { it.completed }
+            val total = products.size
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.background(blanco, CircleShape)
+                ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Volver",
-                        tint = verde
+                        tint = principal
                     )
                 }
 
-                Text(
-                    text = "Compra semanal",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = texto
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column {
+                    Text(
+                        text = nombreLista,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = texto
+                    )
+                    Text(
+                        text = "$comprados de $total comprados",
+                        fontSize = 13.sp,
+                        color = Gris
+                    )
+                }
+            }
+
+            // Barra de progreso
+            if (total > 0) {
+                Spacer(modifier = Modifier.height(16.dp))
+                LinearProgressIndicator(
+                    progress = { comprados.toFloat() / total },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(50.dp)),
+                    color = principal,
+                    trackColor = Borde
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // MENSAJE CUANDO NO HAY CATEGORÍAS
+            // ===== MENSAJE SI NO HAY CATEGORÍAS =====
             if (categories.isEmpty()) {
-                Text(
-                    text = "Todavía no hay categorías. Pulsa «Nueva categoría» para empezar.",
-                    color = texto,
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.List,
+                        contentDescription = null,
+                        tint = principal,
+                        modifier = Modifier.size(56.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Todavía no hay categorías",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = texto
+                    )
+                    Text(
+                        "Pulsa «Nueva categoría» para empezar",
+                        color = Gris
+                    )
+                }
             }
 
-            // MOSTRAR CATEGORÍAS
+            // ===== CATEGORÍAS =====
             categories.forEachIndexed { index, category ->
 
-                // Colores suaves para las categorías
                 val colorCategoria = when (index % 4) {
-                    0 -> Color(0xFFDDEBD8)
-                    1 -> Color(0xFFDCEAF2)
-                    2 -> Color(0xFFF5E3D5)
-                    else -> Color(0xFFF3E3E8)
+                    0 -> Color(0xFFD9E8DC)
+                    1 -> Color(0xFFEADFC2)
+                    2 -> Color(0xFFCCE2D6)
+                    else -> Color(0xFFE6D9CF)
                 }
 
                 val isExpanded = category.id in expandedCategories
 
-                // CABECERA DE CATEGORÍA
+                // Cabecera de categoría
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -150,7 +209,6 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
 
-                    // Tarjeta pulsable: abre y cierra los productos
                     Surface(
                         modifier = Modifier
                             .weight(1f)
@@ -165,18 +223,33 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                         shape = RoundedCornerShape(50.dp),
                         color = colorCategoria
                     ) {
-                        Text(
-                            text = category.name,
-                            color = texto,
-                            style = MaterialTheme.typography.titleSmall,
+                        Row(
                             modifier = Modifier.padding(
                                 horizontal = 16.dp,
                                 vertical = 12.dp
+                            ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = category.name,
+                                color = texto,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
                             )
-                        )
+                            Text(
+                                text = "${products.count { it.categoryId == category.id }}",
+                                color = texto,
+                                fontSize = 13.sp
+                            )
+                            Icon(
+                                if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = texto
+                            )
+                        }
                     }
 
-                    // Menú de opciones de la categoría
+                    // Opciones de la categoría
                     var menuCategoriaAbierto by remember {
                         mutableStateOf(false)
                     }
@@ -190,7 +263,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                             Icon(
                                 Icons.Default.MoreVert,
                                 contentDescription = "Opciones",
-                                tint = verde
+                                tint = principal
                             )
                         }
 
@@ -234,7 +307,6 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                     }
                 }
 
-                // MOSTRAR PRODUCTOS SOLO SI LA CATEGORÍA ESTÁ ABIERTA
                 if (isExpanded) {
 
                     products
@@ -266,13 +338,12 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
 
-                                    // CÍRCULO PARA MARCAR COMO COMPRADO
                                     Box(
                                         modifier = Modifier
                                             .size(25.dp)
                                             .background(
                                                 color = if (product.completed) {
-                                                    verde
+                                                    principal
                                                 } else {
                                                     Color.Transparent
                                                 },
@@ -281,9 +352,9 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                                             .border(
                                                 width = 1.5.dp,
                                                 color = if (product.completed) {
-                                                    verde
+                                                    principal
                                                 } else {
-                                                    Color(0xFF899187)
+                                                    Gris
                                                 },
                                                 shape = CircleShape
                                             )
@@ -307,13 +378,17 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                                         }
                                     }
 
-                                    // Nombre del producto
                                     Text(
                                         text = product.name,
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(start = 12.dp),
-                                        color = texto
+                                        color = if (product.completed) Gris else texto,
+                                        textDecoration = if (product.completed) {
+                                            TextDecoration.LineThrough
+                                        } else {
+                                            null
+                                        }
                                     )
 
                                     // Menú de opciones del producto
@@ -330,7 +405,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                                             Icon(
                                                 Icons.Default.MoreVert,
                                                 contentDescription = "Opciones",
-                                                tint = verde
+                                                tint = principal
                                             )
                                         }
 
@@ -386,7 +461,6 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // BOTONES FIJOS EN LA PARTE INFERIOR
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -394,7 +468,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
 
-            // AÑADIR PRODUCTO
+            // ===== BOTONES DE ABAJO =====
             Button(
                 onClick = {
                     editingProduct = null
@@ -408,16 +482,17 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                     .height(50.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = verde
+                    containerColor = principal
                 ),
                 enabled = categories.isNotEmpty()
             ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
                 Text("Añadir producto")
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // NUEVA CATEGORÍA
             OutlinedButton(
                 onClick = {
                     editingCategory = null
@@ -430,7 +505,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                     .height(50.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = verde
+                    contentColor = principal
                 )
             ) {
                 Text("Nueva categoría")
@@ -438,7 +513,6 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
         }
     }
 
-    // DIÁLOGO PARA CREAR O EDITAR CATEGORÍA
     if (showCategoryDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -508,7 +582,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
         )
     }
 
-    // DIÁLOGO PARA ELIMINAR CATEGORÍA
+    // Diálogo para eliminar categoría
     categoryToDelete?.let { category ->
 
         AlertDialog(
@@ -554,7 +628,6 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
         )
     }
 
-    // DIÁLOGO PARA AÑADIR O EDITAR PRODUCTO
     if (showDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -666,7 +739,6 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
     }
 }
 
-// Palabras clave para clasificar productos automáticamente
 val keywords = mapOf(
     "leche" to "lácteos",
     "queso" to "lácteos",
