@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -36,7 +37,7 @@ fun MyListScreen(
     val context = LocalContext.current
     val repository: ShoppingRepository = remember { ShoppingRepository() }
 
-    // ===== USUARIO CONECTADO =====
+    // USUARIO CONECTADO
     val usuario: FirebaseUser? = FirebaseAuth.getInstance().currentUser
     val miId: String = usuario?.uid ?: ""
     val miCorreo: String = usuario?.email ?: ""
@@ -55,19 +56,17 @@ fun MyListScreen(
         }
     }
 
-    // ===== DATOS DE LA PANTALLA =====
+    // Datos de la pantalla
     var listas: List<ListaCompra> by remember { mutableStateOf(listOf()) }
     var invitaciones: List<Invitacion> by remember { mutableStateOf(listOf()) }
     val numProductos: MutableMap<String, Int> = remember { mutableStateMapOf() }
     var pestana: String by remember { mutableStateOf("Listas") }
 
-    // ===== VENTANAS ABIERTAS O CERRADAS =====
+    // Ventanas abiertas o cerradas
     var mostrarCrear: Boolean by remember { mutableStateOf(false) }
     var listaAEditar: ListaCompra? by remember { mutableStateOf(null) }
     var listaAEliminar: ListaCompra? by remember { mutableStateOf(null) }
     var listaAInvitar: ListaCompra? by remember { mutableStateOf(null) }
-
-    // ===== ESCUCHAR FIRESTORE =====
 
     // Mis listas
     DisposableEffect(miId) {
@@ -135,7 +134,7 @@ fun MyListScreen(
         }
     }
 
-    // ===== PANTALLA =====
+    // PANTALLA
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -146,21 +145,21 @@ fun MyListScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Principal, RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
                 .statusBarsPadding()
                 .padding(24.dp)
         ) {
-            Text("MiCesta", color = PrincipalClaro, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text("MiCesta", color = Principal, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             val titulo = when (pestana) {
                 "Favoritos" -> "Mis favoritos"
                 "Perfil" -> "Mi perfil"
                 else -> "Mis listas"
             }
-            Text(titulo, color = Blanco, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(titulo, color = Color.Black, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         }
 
         // Contenido
+
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -174,13 +173,13 @@ fun MyListScreen(
                     correo = miCorreo,
                     numListas = listas.size,
                     numCompartidas = listas.count { !it.esMia },
-                    tipoCuenta = tipoCuenta,
                     onLogout = onLogout
                 )
 
             } else {
 
                 // Invitaciones pendientes (solo en la pestaña Listas)
+
                 if (pestana == "Listas") {
                     for (invitacion in invitaciones) {
                         TarjetaInvitacion(
@@ -252,7 +251,8 @@ fun MyListScreen(
             }
         }
 
-        // Pestañas de abajo
+        // Pestañas de abajo:
+
         NavigationBar(containerColor = Blanco) {
             NavigationBarItem(
                 selected = pestana == "Listas",
@@ -274,8 +274,6 @@ fun MyListScreen(
             )
         }
     }
-
-    // ===== VENTANAS =====
 
     // Crear lista
     if (mostrarCrear) {
@@ -367,7 +365,7 @@ fun MyListScreen(
     }
 }
 
-// ===== TARJETA DE UNA LISTA =====
+//  Tarjeta de una lista
 @Composable
 fun TarjetaLista(
     lista: ListaCompra,
@@ -463,7 +461,7 @@ fun TarjetaLista(
     }
 }
 
-// ===== TARJETA DE INVITACIÓN =====
+// Tarjeta de invitacion
 @Composable
 fun TarjetaInvitacion(
     invitacion: Invitacion,
@@ -492,14 +490,13 @@ fun TarjetaInvitacion(
     }
 }
 
-// ===== PERFIL =====
+// la ventana del perfil.
 @Composable
 fun PantallaPerfil(
     nombre: String,
     correo: String,
     numListas: Int,
     numCompartidas: Int,
-    tipoCuenta: String,
     onLogout: () -> Unit
 ) {
     // Letra de la foto: la primera del nombre
@@ -538,14 +535,13 @@ fun PantallaPerfil(
                 FilaDato(Icons.Filled.List, "Mis listas", "$numListas")
                 Spacer(modifier = Modifier.height(14.dp))
                 FilaDato(Icons.Filled.Group, "Compartidas conmigo", "$numCompartidas")
-                Spacer(modifier = Modifier.height(14.dp))
-                FilaDato(Icons.Filled.Lock, "Cuenta", tipoCuenta)
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         // Cerrar sesión
+
         OutlinedButton(
             onClick = onLogout,
             shape = RoundedCornerShape(16.dp),
@@ -553,6 +549,7 @@ fun PantallaPerfil(
                 .fillMaxWidth()
                 .height(54.dp)
         ) {
+
             Icon(Icons.Filled.Logout, null, tint = Rojo)
             Spacer(modifier = Modifier.width(8.dp))
             Text("Cerrar sesión", color = Rojo)
@@ -561,6 +558,7 @@ fun PantallaPerfil(
 }
 
 // Una fila del perfil: icono + título + valor
+
 @Composable
 fun FilaDato(icono: ImageVector,titulo: String, valor: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -580,7 +578,7 @@ fun FilaDato(icono: ImageVector,titulo: String, valor: String) {
     }
 }
 
-// ===== VENTANA CON UN CAMPO DE TEXTO =====
+// Ventana con un campo de texto:
 @Composable
 fun VentanaTexto(
     titulo: String,

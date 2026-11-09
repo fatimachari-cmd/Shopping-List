@@ -1,4 +1,4 @@
-package com.fatimachari.listadecompra.ui.theme.listdetail
+package com.fatimachari.listadecompra.ui.listdetail
 
 import com.fatimachari.listadecompra.ui.theme.*
 import androidx.compose.foundation.background
@@ -37,6 +37,7 @@ import com.fatimachari.listadecompra.models.Product
 fun ListDetailScreen(listId: String, onBack: () -> Unit) {
 
     // Colores de la pantalla
+
     val fondo = Fondo
     val principal = Principal
     val texto = Texto
@@ -71,6 +72,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
     val repository = remember { ShoppingRepository() }
 
     // Nombre real de la lista (se lee de Firestore)
+
     var nombreLista by remember { mutableStateOf("") }
 
     // Escuchar los cambios de Firebase
@@ -112,7 +114,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                 .padding(16.dp)
         ) {
 
-            // ===== CABECERA =====
+            // CABECERA
             val comprados = products.count { it.completed }
             val total = products.size
 
@@ -161,7 +163,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ===== MENSAJE SI NO HAY CATEGORÍAS =====
+            // MENSAJE SI NO HAY CATEGORÍAS
             if (categories.isEmpty()) {
                 Column(
                     modifier = Modifier
@@ -189,7 +191,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                 }
             }
 
-            // ===== CATEGORÍAS =====
+            // CATEGORÍAS
             categories.forEachIndexed { index, category ->
 
                 val colorCategoria = when (index % 4) {
@@ -468,7 +470,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
 
-            // ===== BOTONES DE ABAJO =====
+            // BOTONES DE ABAJO
             Button(
                 onClick = {
                     editingProduct = null

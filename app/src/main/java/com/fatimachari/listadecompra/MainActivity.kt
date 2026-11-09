@@ -14,7 +14,7 @@ import com.fatimachari.listadecompra.ui.screen.RegisterScreen
 import com.fatimachari.listadecompra.ui.screen.SplashScreen
 import com.fatimachari.listadecompra.ui.screen.WelcomeScreen
 import com.fatimachari.listadecompra.ui.theme.ListadeCompraTheme
-import com.fatimachari.listadecompra.ui.theme.listdetail.ListDetailScreen
+import com.fatimachari.listadecompra.ui.listdetail.ListDetailScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
