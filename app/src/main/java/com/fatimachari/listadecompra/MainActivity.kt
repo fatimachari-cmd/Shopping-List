@@ -11,7 +11,6 @@ import com.fatimachari.listadecompra.auth.AuthRepository
 import com.fatimachari.listadecompra.ui.screen.LoginScreen
 import com.fatimachari.listadecompra.ui.screen.MyListScreen
 import com.fatimachari.listadecompra.ui.screen.RegisterScreen
-import com.fatimachari.listadecompra.ui.screen.SplashScreen
 import com.fatimachari.listadecompra.ui.screen.WelcomeScreen
 import com.fatimachari.listadecompra.ui.theme.ListadeCompraTheme
 import com.fatimachari.listadecompra.ui.listdetail.ListDetailScreen
@@ -35,7 +34,7 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
 
                 var pantalla by remember {
-                    mutableStateOf("splash")
+                    mutableStateOf(if (currentUser != null) "mis_listas" else "welcome")
                 }
 
                 var cargando by remember {
@@ -51,19 +50,6 @@ class MainActivity : ComponentActivity() {
                 }
 
                 when (pantalla) {
-
-                    "splash" -> {
-                        SplashScreen(
-                            onTimeout = {
-                                pantalla = if (currentUser != null) {
-                                    "mis_listas"
-                                } else {
-                                    "welcome"
-                                }
-                            }
-                        )
-                    }
-
                     "welcome" -> {
                         WelcomeScreen(
                             onEmpezar = {
@@ -72,7 +58,6 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-
                     "login" -> {
                         LoginScreen(
                             cargando = cargando,
