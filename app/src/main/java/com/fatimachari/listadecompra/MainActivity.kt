@@ -8,12 +8,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.fatimachari.listadecompra.auth.AuthRepository
+import com.fatimachari.listadecompra.ui.listdetail.ListDetailScreen
 import com.fatimachari.listadecompra.ui.screen.LoginScreen
 import com.fatimachari.listadecompra.ui.screen.MyListScreen
 import com.fatimachari.listadecompra.ui.screen.RegisterScreen
 import com.fatimachari.listadecompra.ui.screen.WelcomeScreen
 import com.fatimachari.listadecompra.ui.theme.ListadeCompraTheme
-import com.fatimachari.listadecompra.ui.listdetail.ListDetailScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
 
                 var pantalla by remember {
-                    mutableStateOf(if (currentUser != null) "mis_listas" else "welcome")
+                    mutableStateOf("splash")
                 }
 
                 var cargando by remember {
@@ -50,6 +50,19 @@ class MainActivity : ComponentActivity() {
                 }
 
                 when (pantalla) {
+
+                    "splash" -> {
+                        SplashScreen(
+                            onTimeout = {
+                                pantalla = if (currentUser != null) {
+                                    "mis_listas"
+                                } else {
+                                    "welcome"
+                                }
+                            }
+                        )
+                    }
+
                     "welcome" -> {
                         WelcomeScreen(
                             onEmpezar = {
@@ -58,6 +71,7 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+
                     "login" -> {
                         LoginScreen(
                             cargando = cargando,
