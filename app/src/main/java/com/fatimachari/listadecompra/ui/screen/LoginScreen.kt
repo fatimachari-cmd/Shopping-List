@@ -67,9 +67,9 @@ fun LoginScreen(
     val gris = Color(0xFF78847D)
     val focusManager = LocalFocusManager.current
 
-    var correo by remember { mutableStateOf("") }
-    var contrasena by remember { mutableStateOf("") }
-    var verContrasena by remember { mutableStateOf(false) }
+    var correo: String by remember { mutableStateOf("") }
+    var contrasena: String by remember { mutableStateOf("") }
+    var verContrasena: Boolean by remember { mutableStateOf(false) }
     var errorLocal by remember { mutableStateOf<String?>(null) }
 
     val errorMostrar = errorMsg ?: errorLocal

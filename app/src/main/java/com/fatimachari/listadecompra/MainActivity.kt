@@ -1,4 +1,3 @@
-
 package com.fatimachari.listadecompra
 
 import android.os.Bundle
@@ -9,13 +8,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.fatimachari.listadecompra.auth.AuthRepository
+import com.fatimachari.listadecompra.ui.listdetail.ListDetailScreen
 import com.fatimachari.listadecompra.ui.screen.LoginScreen
 import com.fatimachari.listadecompra.ui.screen.MyListScreen
-import com.fatimachari.listadecompra.ui.screen.OnboardingScreen
 import com.fatimachari.listadecompra.ui.screen.RegisterScreen
-import com.fatimachari.listadecompra.ui.screen.SplashScreen
+import com.fatimachari.listadecompra.ui.screen.WelcomeScreen
 import com.fatimachari.listadecompra.ui.theme.ListadeCompraTheme
-import com.fatimachari.listadecompra.ui.theme.listdetail.ListDetailScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -59,27 +57,17 @@ class MainActivity : ComponentActivity() {
                                 pantalla = if (currentUser != null) {
                                     "mis_listas"
                                 } else {
-                                    "onboarding"
+                                    "welcome"
                                 }
                             }
                         )
                     }
 
-                    "onboarding" -> {
-                        OnboardingScreen(
-                            onNext = {
-                                pantalla = if (currentUser != null) {
-                                    "mis_listas"
-                                } else {
-                                    "login"
-                                }
-                            },
-                            onSkip = {
-                                pantalla = if (currentUser != null) {
-                                    "mis_listas"
-                                } else {
-                                    "login"
-                                }
+                    "welcome" -> {
+                        WelcomeScreen(
+                            onEmpezar = {
+                                errorMsg = null
+                                pantalla = "login"
                             }
                         )
                     }
@@ -155,7 +143,7 @@ class MainActivity : ComponentActivity() {
                         RegisterScreen(
                             cargando = cargando,
                             errorMsg = errorMsg,
-                            onRegister = { email, password ->
+                            onRegister = { nombre, email, password ->
 
                                 cargando = true
                                 errorMsg = null
@@ -163,6 +151,7 @@ class MainActivity : ComponentActivity() {
                                 scope.launch {
                                     val resultado =
                                         authRepository.registerWithEmail(
+                                            nombre,
                                             email,
                                             password
                                         )
@@ -200,7 +189,7 @@ class MainActivity : ComponentActivity() {
                             onLogout = {
                                 authRepository.signOut()
                                 errorMsg = null
-                                pantalla = "login"
+                                pantalla = "welcome"
                             }
                         )
                     }

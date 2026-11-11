@@ -11,6 +11,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,12 +48,16 @@ class AuthRepository(
     }
 
     /**
-     * Registrar nuevo usuario con Email y Contraseña.
+     * Registrar nuevo usuario con Email y Contraseña (y guardar su nombre).
      */
-    suspend fun registerWithEmail(email: String, pass: String): Result<FirebaseUser> {
+    suspend fun registerWithEmail(nombre: String, email: String, pass: String): Result<FirebaseUser> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email.trim(), pass).await()
             val user = result.user ?: throw Exception("No se pudo obtener la información del usuario.")
+
+            // Guardamos el nombre en el perfil del usuario
+            val cambios = UserProfileChangeRequest.Builder().setDisplayName(nombre.trim()).build()
+            user.updateProfile(cambios).await()
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
