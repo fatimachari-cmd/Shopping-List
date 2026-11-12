@@ -4,7 +4,7 @@
 
 MiCesta es una aplicación Android para crear listas de la compra y compartirlas con otras personas en tiempo real. Está hecha con **Kotlin**, **Jetpack Compose**, **Firebase** y **Trello**.
 
-Proyecto desarrollado por **Fatima Chari** y **Loubna** (DAM, Institut Baix Camp).
+Proyecto desarrollado por **Fatima Chari** y **Loubna Houta** (DAM, Institut Baix Camp).
 
 ---
 
@@ -12,9 +12,8 @@ Proyecto desarrollado por **Fatima Chari** y **Loubna** (DAM, Institut Baix Camp
 
 | Bienvenida | Inicio de sesión | Registro |
 |:---:|:---:|:---:|
-| <img width="360" height="758" alt="Captura de pantalla 2026-11-12 003424" src="https://github.com/user-attachments/assets/e79fc174-64d3-427d-bb57-443981123223" />
-  <img width="360" height="758" alt="Captura de pantalla 2026-11-12 003437" src="https://github.com/user-attachments/assets/825f3120-0982-41b6-9417-0e45e981187b" />
- |<img width="360" height="758" alt="Captura de pantalla 2026-11-12 003516" src="https://github.com/user-attachments/assets/4fc628af-62af-4e2f-8cd6-455dd9749546" /> | <img width="360" height="758" alt="Captura de pantalla 2026-11-12 003743" src="https://github.com/user-attachments/assets/dce26929-5663-4b8f-aa90-acf1650ebce4" />|
+| <img width="359" height="753" alt="Captura de pantalla 2026-11-12 003437" src="https://github.com/user-attachments/assets/a4af4c61-0a77-408c-a463-3cf82b1176be" />
+ |<img width="400" height="200" alt="Captura de pantalla 2026-11-12 003516" src="https://github.com/user-attachments/assets/4fc628af-62af-4e2f-8cd6-455dd9749546" /> | <img width="360" height="758" alt="Captura de pantalla 2026-11-12 003743" src="https://github.com/user-attachments/assets/dce26929-5663-4b8f-aa90-acf1650ebce4" />|
 
 | Mis listas | Detalle de una lista | Categorías |
 |:---:|:---:|:---:|
