@@ -1,6 +1,10 @@
 package com.fatimachari.listadecompra.ui.screen
 
+import android.graphics.Bitmap
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,19 +18,27 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fatimachari.listadecompra.R
+import com.fatimachari.listadecompra.auth.AuthRepository
 import com.fatimachari.listadecompra.data.ShoppingRepository
 import com.fatimachari.listadecompra.models.Invitacion
 import com.fatimachari.listadecompra.models.ListaCompra
 import com.fatimachari.listadecompra.ui.theme.*
+import com.fatimachari.listadecompra.util.base64ABitmap
+import com.fatimachari.listadecompra.util.uriABase64
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 @Composable
@@ -44,14 +56,24 @@ fun MyListScreen(
 
     // Nombre: el que escribió al registrarse (o Google). Si no hay, usamos el correo
     val nombreGuardado: String = usuario?.displayName ?: ""
-    val miNombre: String = if (nombreGuardado.isBlank()) miCorreo.substringBefore("@") else nombreGuardado
+    var miNombre: String by remember {
+        mutableStateOf(if (nombreGuardado.isBlank()) miCorreo.substringBefore("@") else nombreGuardado)
+    }
 
-    // Tipo de cuenta: Google o correo
-    var tipoCuenta: String = "Correo y contraseña"
-    if (usuario != null) {
-        for (proveedor in usuario.providerData) {
-            if (proveedor.providerId == "google.com") {
-                tipoCuenta = "Google"
+    // Foto de perfil (la guardamos en Firestore como texto)
+    var foto: Bitmap? by remember { mutableStateOf(null) }
+
+    val scope = rememberCoroutineScope()
+    val authRepository = remember { AuthRepository() }
+
+    // Elegir una foto de la galería
+    val elegirFoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val texto = uriABase64(context, uri)
+            if (texto != null) {
+                repository.saveUserPhoto(miId, texto)
+            } else {
+                Toast.makeText(context, "No se pudo cargar la foto", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -67,6 +89,7 @@ fun MyListScreen(
     var listaAEditar: ListaCompra? by remember { mutableStateOf(null) }
     var listaAEliminar: ListaCompra? by remember { mutableStateOf(null) }
     var listaAInvitar: ListaCompra? by remember { mutableStateOf(null) }
+    var cambiarNombre: Boolean by remember { mutableStateOf(false) }
 
     // Mis listas
     DisposableEffect(miId) {
@@ -77,7 +100,7 @@ fun MyListScreen(
                 val lista = ListaCompra(
                     id = dato["id"].toString(),
                     nombre = dato["title"].toString(),
-                    esFavorita = dato["isFavorite"] == true,
+                    esFavorita = (dato["favoritedBy"] as? List<*>)?.contains(miId) == true,
                     esMia = dato["ownerId"] == miId
                 )
                 nuevasListas.add(lista)
@@ -104,6 +127,14 @@ fun MyListScreen(
             }
 
             invitaciones = nuevas
+        }
+        onDispose { escucha.remove() }
+    }
+
+    // Mi foto de perfil
+    DisposableEffect(miId) {
+        val escucha = repository.listenUserPhoto(miId) { texto ->
+            foto = base64ABitmap(texto)
         }
         onDispose { escucha.remove() }
     }
@@ -148,14 +179,14 @@ fun MyListScreen(
                 .statusBarsPadding()
                 .padding(24.dp)
         ) {
-            Text("MiCesta", color = Principal, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.app_name), color = Principal, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             val titulo = when (pestana) {
                 "Favoritos" -> "Mis favoritos"
                 "Perfil" -> "Mi perfil"
                 else -> "Mis listas"
             }
-            Text(titulo, color = Color.Black, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(titulo, color = Texto, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         }
 
         // Contenido
@@ -171,6 +202,9 @@ fun MyListScreen(
                 PantallaPerfil(
                     nombre = miNombre,
                     correo = miCorreo,
+                    foto = foto,
+                    onCambiarFoto = { elegirFoto.launch("image/*") },
+                    onCambiarNombre = { cambiarNombre = true },
                     numListas = listas.size,
                     numCompartidas = listas.count { !it.esMia },
                     onLogout = onLogout
@@ -224,7 +258,7 @@ fun MyListScreen(
                                 lista = lista,
                                 productos = numProductos[lista.id] ?: 0,
                                 onAbrir = { onListClick(lista.id) },
-                                onFavorito = { repository.updateListFavorite(lista.id, !lista.esFavorita) },
+                                onFavorito = { repository.updateListFavorite(lista.id, miId, !lista.esFavorita) },
                                 onEditar = { listaAEditar = lista },
                                 onInvitar = { listaAInvitar = lista },
                                 onEliminar = { listaAEliminar = lista }
@@ -302,6 +336,27 @@ fun MyListScreen(
                 listaAEditar = null
             },
             onCancelar = { listaAEditar = null }
+        )
+    }
+
+    // Cambiar mi nombre (perfil)
+    if (cambiarNombre) {
+        VentanaTexto(
+            titulo = "Tu nombre",
+            etiqueta = "Nombre",
+            textoInicial = miNombre,
+            boton = "Guardar",
+            onAceptar = { nombre ->
+                scope.launch {
+                    authRepository.updateName(nombre).onSuccess {
+                        miNombre = nombre
+                    }.onFailure {
+                        Toast.makeText(context, "No se pudo cambiar el nombre", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                cambiarNombre = false
+            },
+            onCancelar = { cambiarNombre = false }
         )
     }
 
@@ -490,16 +545,19 @@ fun TarjetaInvitacion(
     }
 }
 
-// la ventana del perfil.
+// La ventana del perfil
 @Composable
 fun PantallaPerfil(
     nombre: String,
     correo: String,
+    foto: Bitmap?,
+    onCambiarFoto: () -> Unit,
+    onCambiarNombre: () -> Unit,
     numListas: Int,
     numCompartidas: Int,
     onLogout: () -> Unit
 ) {
-    // Letra de la foto: la primera del nombre
+    // Si no hay foto, se ve la primera letra del nombre
     val inicial = if (nombre.isNotEmpty()) nombre.substring(0, 1).uppercase() else "?"
 
     Column(
@@ -508,19 +566,48 @@ fun PantallaPerfil(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Foto con la inicial
-        Box(
-            modifier = Modifier
-                .size(96.dp)
-                .background(PrincipalClaro, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(inicial, fontSize = 40.sp, fontWeight = FontWeight.Bold, color = Principal)
+        // Foto (se pulsa para cambiarla)
+        Box(contentAlignment = Alignment.BottomEnd) {
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(PrincipalClaro)
+                    .clickable { onCambiarFoto() },
+                contentAlignment = Alignment.Center
+            ) {
+                if (foto != null) {
+                    Image(
+                        bitmap = foto.asImageBitmap(),
+                        contentDescription = "Foto de perfil",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(inicial, fontSize = 40.sp, fontWeight = FontWeight.Bold, color = Principal)
+                }
+            }
+
+            // Icono de cámara
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .background(Principal, CircleShape)
+                    .clickable { onCambiarFoto() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Filled.CameraAlt, "Cambiar foto", tint = Blanco, modifier = Modifier.size(16.dp))
+            }
         }
 
-        // Nombre y correo
+        // Nombre (con lápiz para editarlo) y correo
         Spacer(modifier = Modifier.height(12.dp))
-        Text(nombre, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Texto)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(nombre, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Texto)
+            IconButton(onClick = onCambiarNombre) {
+                Icon(Icons.Filled.Edit, "Cambiar nombre", tint = Gris, modifier = Modifier.size(18.dp))
+            }
+        }
         Text(correo, fontSize = 14.sp, color = Gris)
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -541,7 +628,6 @@ fun PantallaPerfil(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Cerrar sesión
-
         OutlinedButton(
             onClick = onLogout,
             shape = RoundedCornerShape(16.dp),
@@ -549,7 +635,6 @@ fun PantallaPerfil(
                 .fillMaxWidth()
                 .height(54.dp)
         ) {
-
             Icon(Icons.Filled.Logout, null, tint = Rojo)
             Spacer(modifier = Modifier.width(8.dp))
             Text("Cerrar sesión", color = Rojo)

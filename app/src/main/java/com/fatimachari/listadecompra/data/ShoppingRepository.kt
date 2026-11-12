@@ -6,13 +6,18 @@ import com.fatimachari.listadecompra.models.Product
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.SetOptions
 
 class ShoppingRepository {
 
     private val db = FirebaseFirestore.getInstance()
+    private val TAG = "MiCesta"
 
     private fun lista(listId: String) = db.collection("lists").document(listId)
 
+    // ---------- LISTAS ----------
+
+    // Escucha las listas donde estoy como miembro
     fun listenLists(
         userId: String,
         onChange: (List<Map<String, Any?>>) -> Unit
@@ -21,7 +26,7 @@ class ShoppingRepository {
             .whereArrayContains("members", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("MiCesta", "Error al escuchar listas: ${error.message}")
+                    Log.e(TAG, "Error al escuchar listas: ${error.message}")
                     return@addSnapshotListener
                 }
                 if (snapshot == null) return@addSnapshotListener
@@ -40,24 +45,26 @@ class ShoppingRepository {
             "title" to title,
             "ownerId" to ownerId,
             "members" to listOf(ownerId),
-            "isFavorite" to false
+            "favoritedBy" to listOf<String>()
         )
         lista(listId).set(datos)
             .addOnSuccessListener { onResult(true) }
             .addOnFailureListener { error ->
-                Log.e("MiCesta", "Error al crear lista: ${error.message}")
+                Log.e(TAG, "Error al crear lista: ${error.message}")
                 onResult(false)
             }
     }
 
     fun updateListName(listId: String, nuevoNombre: String) {
         lista(listId).update("title", nuevoNombre)
-            .addOnFailureListener { Log.e("MiCesta", "Error al cambiar nombre: ${it.message}") }
+            .addOnFailureListener { Log.e(TAG, "Error al cambiar nombre: ${it.message}") }
     }
 
-    fun updateListFavorite(listId: String, isFavorite: Boolean) {
-        lista(listId).update("isFavorite", isFavorite)
-            .addOnFailureListener { Log.e("MiCesta", "Error al marcar favorita: ${it.message}") }
+    // Favorito de cada persona: guardamos mi id en "favoritedBy" (o lo quitamos)
+    fun updateListFavorite(listId: String, userId: String, esFavorita: Boolean) {
+        val cambio = if (esFavorita) FieldValue.arrayUnion(userId) else FieldValue.arrayRemove(userId)
+        lista(listId).update("favoritedBy", cambio)
+            .addOnFailureListener { Log.e(TAG, "Error al marcar favorita: ${it.message}") }
     }
 
     fun deleteList(listId: String) {
@@ -69,22 +76,33 @@ class ShoppingRepository {
                 categorias.documents.forEach { batch.delete(it.reference) }
                 batch.delete(lista(listId))
                 batch.commit()
-                    .addOnFailureListener { Log.e("MiCesta", "Error al eliminar lista: ${it.message}") }
+                    .addOnFailureListener { Log.e(TAG, "Error al eliminar lista: ${it.message}") }
             }
         }
     }
 
+    // Salir de una lista que no es mía (también quito mi favorito)
     fun leaveList(listId: String, userId: String) {
-        lista(listId).update("members", FieldValue.arrayRemove(userId))
-            .addOnFailureListener { Log.e("MiCesta", "Error al salir de la lista: ${it.message}") }
+        val cambios = mapOf(
+            "members" to FieldValue.arrayRemove(userId),
+            "favoritedBy" to FieldValue.arrayRemove(userId)
+        )
+        lista(listId).update(cambios)
+            .addOnFailureListener { Log.e(TAG, "Error al salir de la lista: ${it.message}") }
     }
 
     fun listenListName(listId: String, onChange: (String) -> Unit): ListenerRegistration {
-        return lista(listId).addSnapshotListener { doc, _ ->
+        return lista(listId).addSnapshotListener { doc, error ->
+            if (error != null) {
+                Log.e(TAG, "Error al leer el nombre de la lista: ${error.message}")
+                return@addSnapshotListener
+            }
             if (doc == null) return@addSnapshotListener
             onChange(doc.getString("title") ?: "")
         }
     }
+
+    // ---------- INVITACIONES ----------
 
     fun sendInvitation(
         listId: String,
@@ -102,7 +120,7 @@ class ShoppingRepository {
         db.collection("invitations").add(datos)
             .addOnSuccessListener { onResult(true) }
             .addOnFailureListener { error ->
-                Log.e("MiCesta", "Error al enviar invitación: ${error.message}")
+                Log.e(TAG, "Error al enviar invitación: ${error.message}")
                 onResult(false)
             }
     }
@@ -115,7 +133,7 @@ class ShoppingRepository {
             .whereEqualTo("toEmail", myEmail.trim().lowercase())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("MiCesta", "Error al escuchar invitaciones: ${error.message}")
+                    Log.e(TAG, "Error al escuchar invitaciones: ${error.message}")
                     return@addSnapshotListener
                 }
                 if (snapshot == null) return@addSnapshotListener
@@ -129,6 +147,7 @@ class ShoppingRepository {
             }
     }
 
+    // Aceptar: me añado a la lista y borro la invitación
     fun acceptInvitation(invitationId: String, listId: String, userId: String) {
         lista(listId).update("members", FieldValue.arrayUnion(userId))
             .addOnCompleteListener {
@@ -140,9 +159,15 @@ class ShoppingRepository {
         db.collection("invitations").document(invitationId).delete()
     }
 
+    // ---------- CATEGORÍAS ----------
+
     fun listenCategories(listId: String, onChange: (List<Category>) -> Unit): ListenerRegistration {
         return lista(listId).collection("categories")
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error al escuchar categorías: ${error.message}")
+                    return@addSnapshotListener
+                }
                 if (snapshot == null) return@addSnapshotListener
 
                 val categorias = snapshot.documents.mapNotNull { doc ->
@@ -152,12 +177,15 @@ class ShoppingRepository {
             }
     }
 
-    fun saveCategory(listId: String, category: Category) {
+    // Devuelve el id de la categoría (sirve para guardar un producto dentro de una nueva)
+    fun saveCategory(listId: String, category: Category): String {
         val coleccion = lista(listId).collection("categories")
         val doc = if (category.id == "") coleccion.document() else coleccion.document(category.id)
         doc.set(category.copy(id = doc.id))
+        return doc.id
     }
 
+    // Al borrar una categoría se borran también sus productos
     fun deleteCategory(listId: String, categoryId: String, productIds: List<String>) {
         val batch = db.batch()
         productIds.forEach { id ->
@@ -167,9 +195,15 @@ class ShoppingRepository {
         batch.commit()
     }
 
+    // ---------- PRODUCTOS ----------
+
     fun listenProducts(listId: String, onChange: (List<Product>) -> Unit): ListenerRegistration {
         return lista(listId).collection("products")
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error al escuchar productos: ${error.message}")
+                    return@addSnapshotListener
+                }
                 if (snapshot == null) return@addSnapshotListener
 
                 val productos = snapshot.documents.mapNotNull { doc ->
@@ -187,5 +221,25 @@ class ShoppingRepository {
 
     fun deleteProduct(listId: String, productId: String) {
         lista(listId).collection("products").document(productId).delete()
+    }
+
+    // ---------- PERFIL (foto) ----------
+
+    // La foto se guarda como texto (Base64) en users/{mi id}
+    fun saveUserPhoto(userId: String, fotoBase64: String) {
+        db.collection("users").document(userId)
+            .set(mapOf("photo" to fotoBase64), SetOptions.merge())
+            .addOnFailureListener { Log.e(TAG, "Error al guardar la foto: ${it.message}") }
+    }
+
+    fun listenUserPhoto(userId: String, onChange: (String) -> Unit): ListenerRegistration {
+        return db.collection("users").document(userId)
+            .addSnapshotListener { doc, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error al leer la foto: ${error.message}")
+                    return@addSnapshotListener
+                }
+                onChange(doc?.getString("photo") ?: "")
+            }
     }
 }

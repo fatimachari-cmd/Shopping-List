@@ -73,7 +73,7 @@ fun WelcomeScreen(
 
 
         Ventaja(Icons.Filled.Checklist, "Listas por categorías", "Crea, edita y marca productos.")
-        Ventaja(Icons.Filled.Group, "Compártelas con un código", "Otras personas pueden editarla.")
+        Ventaja(Icons.Filled.Group, "Compártelas por correo", "Invita a alguien y la editáis juntos.")
         Ventaja(Icons.Filled.AutoAwesome, "Clasificación automática", "\"Tomate\" va solo a Frutas y verduras.")
 
         Spacer(modifier = Modifier.weight(1f))
