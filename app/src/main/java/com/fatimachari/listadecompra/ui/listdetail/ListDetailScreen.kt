@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.fatimachari.listadecompra.data.ShoppingRepository
 import com.fatimachari.listadecompra.models.Category
 import com.fatimachari.listadecompra.models.Product
+import com.fatimachari.listadecompra.util.CategoriaAutomatica
 
 @Composable
 fun ListDetailScreen(listId: String, onBack: () -> Unit) {
@@ -61,6 +62,9 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
     }
 
     var editingProduct by remember { mutableStateOf<Product?>(null) }
+
+    // true si la persona ha elegido la categoría a mano (entonces no clasificamos solos)
+    var categoriaManual by remember { mutableStateOf(false) }
 
     var showCategoryDialog by remember { mutableStateOf(false) }
     var categoryName by remember { mutableStateOf("") }
@@ -185,7 +189,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                         color = texto
                     )
                     Text(
-                        "Pulsa «Nueva categoría» para empezar",
+                        "Añade un producto y su categoría se crea sola",
                         color = Gris
                     )
                 }
@@ -427,6 +431,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                                                 },
                                                 onClick = {
                                                     editingProduct = product
+                                                    categoriaManual = true
                                                     newName = product.name
                                                     selectedCategoryId =
                                                         product.categoryId
@@ -467,6 +472,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(fondo)
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
 
@@ -474,6 +480,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
             Button(
                 onClick = {
                     editingProduct = null
+                    categoriaManual = false
                     newName = ""
                     selectedCategoryId = categories.firstOrNull()?.id ?: ""
                     error = false
@@ -485,8 +492,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = principal
-                ),
-                enabled = categories.isNotEmpty()
+                )
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -653,15 +659,16 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                             error = false
 
                             // Clasificación automática
-                            if (editingProduct == null) {
-                                val guess = guessCategoryName(it)
-
-                                val match = categories.firstOrNull { c ->
-                                    c.name.lowercase() == guess
+                            if (editingProduct == null && !categoriaManual) {
+                                val sugerida = CategoriaAutomatica.sugerir(it)
+                                val existente = sugerida?.let { s ->
+                                    categories.firstOrNull { c -> CategoriaAutomatica.coincide(c.name, s) }
                                 }
 
-                                if (match != null) {
-                                    selectedCategoryId = match.id
+                                selectedCategoryId = when {
+                                    existente != null -> existente.id
+                                    sugerida != null -> ""   // se creará al guardar
+                                    else -> categories.firstOrNull()?.id ?: ""
                                 }
                             }
                         },
@@ -676,6 +683,22 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                         }
                     )
 
+                    // Aviso de la categoría automática
+                    val sugerida = if (editingProduct == null && !categoriaManual && newName.isNotBlank()) {
+                        CategoriaAutomatica.sugerir(newName)
+                    } else {
+                        null
+                    }
+                    if (sugerida != null) {
+                        val destino = categories.firstOrNull { CategoriaAutomatica.coincide(it.name, sugerida) }
+                        Text(
+                            if (destino != null) "Categoría automática: «${destino.name}»"
+                            else "Se creará la categoría «$sugerida»",
+                            color = Principal,
+                            fontSize = 13.sp
+                        )
+                    }
+
                     Text(
                         "Categoría",
                         modifier = Modifier.padding(top = 16.dp)
@@ -688,6 +711,7 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                             RadioButton(
                                 selected = selectedCategoryId == category.id,
                                 onClick = {
+                                    categoriaManual = true
                                     selectedCategoryId = category.id
                                 }
                             )
@@ -705,13 +729,28 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
                         val editing = editingProduct
 
                         if (editing == null) {
+                            var idCategoria = selectedCategoryId
+
+                            // Si la categoría sugerida no existe, la creamos
+                            val sugerida = if (categoriaManual) null else CategoriaAutomatica.sugerir(newName)
+                            if (sugerida != null) {
+                                val existente = categories.firstOrNull { CategoriaAutomatica.coincide(it.name, sugerida) }
+                                idCategoria = existente?.id
+                                    ?: repository.saveCategory(listId, Category(name = sugerida))
+                            } else if (idCategoria == "") {
+                                idCategoria = repository.saveCategory(listId, Category(name = "Otros"))
+                            }
+
                             repository.saveProduct(
                                 listId,
                                 Product(
                                     name = newName.trim(),
-                                    categoryId = selectedCategoryId
+                                    categoryId = idCategoria
                                 )
                             )
+
+                            // Abrimos la categoría para que se vea el producto
+                            expandedCategories = expandedCategories + idCategoria
                         } else {
                             repository.saveProduct(
                                 listId,
@@ -739,25 +778,4 @@ fun ListDetailScreen(listId: String, onBack: () -> Unit) {
             containerColor = fondo
         )
     }
-}
-
-val keywords = mapOf(
-    "leche" to "lácteos",
-    "queso" to "lácteos",
-    "yogur" to "lácteos",
-    "mantequilla" to "lácteos",
-    "manzana" to "frutas y verduras",
-    "plátano" to "frutas y verduras",
-    "naranja" to "frutas y verduras",
-    "lechuga" to "frutas y verduras",
-    "tomate" to "frutas y verduras",
-    "zanahoria" to "frutas y verduras"
-)
-
-fun guessCategoryName(productName: String): String? {
-    val text = productName.trim().lowercase()
-
-    return keywords.entries.firstOrNull {
-        text.contains(it.key)
-    }?.value
 }

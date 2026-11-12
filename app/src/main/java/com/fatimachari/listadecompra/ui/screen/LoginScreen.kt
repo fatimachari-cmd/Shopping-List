@@ -51,7 +51,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import com.fatimachari.listadecompra.R
+import com.fatimachari.listadecompra.ui.theme.*
 
 @Composable
 fun LoginScreen(
@@ -61,10 +63,6 @@ fun LoginScreen(
     cargando: Boolean = false,
     errorMsg: String? = null
 ) {
-    val verde = Color(0xFF30734F)
-    val fondo = Color(0xFFFAFAF8)
-    val texto = Color(0xFF263A30)
-    val gris = Color(0xFF78847D)
     val focusManager = LocalFocusManager.current
 
     var correo: String by remember { mutableStateOf("") }
@@ -77,7 +75,7 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(fondo)
+            .background(Fondo)
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -93,10 +91,10 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(10.dp))
 
         Text(
-            text = "MiCesta",
+            text = stringResource(R.string.app_name),
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
-            color = verde
+            color = Principal
         )
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -105,7 +103,7 @@ fun LoginScreen(
             text = "¡Hola de nuevo!",
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = texto
+            color = Texto
         )
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -113,7 +111,7 @@ fun LoginScreen(
         Text(
             text = "Organiza tu compra de forma sencilla.",
             fontSize = 14.sp,
-            color = gris,
+            color = Gris,
             textAlign = TextAlign.Center
         )
 
@@ -131,16 +129,16 @@ fun LoginScreen(
                 Icon(
                     imageVector = Icons.Default.Email,
                     contentDescription = null,
-                    tint = verde
+                    tint = Principal
                 )
             },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = verde,
-                focusedLabelColor = verde,
-                cursorColor = verde
+                focusedBorderColor = Principal,
+                focusedLabelColor = Principal,
+                cursorColor = Principal
             ),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
@@ -161,7 +159,7 @@ fun LoginScreen(
                 Icon(
                     imageVector = Icons.Default.Lock,
                     contentDescription = null,
-                    tint = verde
+                    tint = Principal
                 )
             },
             trailingIcon = {
@@ -169,7 +167,7 @@ fun LoginScreen(
                     Icon(
                         imageVector = if (verContrasena) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                         contentDescription = "Mostrar u ocultar contraseña",
-                        tint = gris
+                        tint = Gris
                     )
                 }
             },
@@ -177,9 +175,9 @@ fun LoginScreen(
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = verde,
-                focusedLabelColor = verde,
-                cursorColor = verde
+                focusedBorderColor = Principal,
+                focusedLabelColor = Principal,
+                cursorColor = Principal
             ),
             visualTransformation = if (verContrasena) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
@@ -202,7 +200,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = err,
-                color = Color(0xFFD32F2F),
+                color = Rojo,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center
             )
@@ -225,7 +223,7 @@ fun LoginScreen(
                 .height(52.dp),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = verde
+                containerColor = Principal
             )
         ) {
             if (cargando) {
@@ -255,7 +253,7 @@ fun LoginScreen(
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(1.dp, Color(0xFFD5DDD7))
+            border = BorderStroke(1.dp, Borde)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -271,7 +269,7 @@ fun LoginScreen(
                     text = "Continuar con Google",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = texto
+                    color = Texto
                 )
             }
         }
@@ -285,13 +283,13 @@ fun LoginScreen(
             Text(
                 text = "¿Todavía no tienes cuenta?",
                 fontSize = 14.sp,
-                color = texto
+                color = Texto
             )
 
             TextButton(onClick = onRegister) {
                 Text(
                     text = "Regístrate",
-                    color = verde,
+                    color = Principal,
                     fontWeight = FontWeight.Bold
                 )
             }

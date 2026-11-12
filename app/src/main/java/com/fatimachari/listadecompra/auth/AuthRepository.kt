@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
-import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.fatimachari.listadecompra.R
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -17,14 +16,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
 
-/**
- * Clase encargada de gestionar la autenticación con Firebase (Email/Contraseña y Google).
- * Puedes llamar a estas funciones desde tu propio ViewModel o pantalla UI.
- */
+// Se encarga de la cuenta del usuario: registro, login (correo y Google), nombre y salir
 class AuthRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) {
 
+
+    // Usuario actual (null si no ha iniciado sesión). Se actualiza solo.
     private val _currentUser = MutableStateFlow<FirebaseUser?>(auth.currentUser)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
 
@@ -34,42 +32,41 @@ class AuthRepository(
         }
     }
 
-    /**
-     * Iniciar sesión con Email y Contraseña.
-     */
+
+    // Iniciar sesión
     suspend fun loginWithEmail(email: String, pass: String): Result<FirebaseUser> {
         return try {
             val result = auth.signInWithEmailAndPassword(email.trim(), pass).await()
-            val user = result.user ?: throw Exception("No se pudo obtener la información del usuario.")
+            val user = result.user ?: throw Exception("No se pudo obtener el usuario.")
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    /**
-     * Registrar nuevo usuario con Email y Contraseña (y guardar su nombre).
-     */
+    // Crear cuenta nueva y guardar el nombre
     suspend fun registerWithEmail(nombre: String, email: String, pass: String): Result<FirebaseUser> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email.trim(), pass).await()
-            val user = result.user ?: throw Exception("No se pudo obtener la información del usuario.")
+            val user = result.user ?: throw Exception("No se pudo obtener el usuario.")
 
-            // Guardamos el nombre en el perfil del usuario
-            val cambios = UserProfileChangeRequest.Builder().setDisplayName(nombre.trim()).build()
+            val cambios = UserProfileChangeRequest.Builder()
+                .setDisplayName(nombre.trim())
+                .build()
             user.updateProfile(cambios).await()
+
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    /**
-     * Iniciar sesión con Google usando Credential Manager.
-     */
+    // Iniciar sesión con Google
     suspend fun signInWithGoogle(context: Context): Result<FirebaseUser> {
         return try {
             val credentialManager = CredentialManager.create(context)
+
+            // Identificador de la app en Google (si falla el de los recursos, usamos este)
             val webClientId = try {
                 context.getString(R.string.default_web_client_id)
             } catch (_: Exception) {
@@ -95,28 +92,40 @@ class AuthRepository(
             if (credential is CustomCredential &&
                 credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
             ) {
-                val googleIdTokenCredential =
-                    GoogleIdTokenCredential.createFrom(credential.data)
-                val idToken = googleIdTokenCredential.idToken
+                // Pasamos la cuenta de Google a Firebase
+                val googleCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                val firebaseCredential = GoogleAuthProvider.getCredential(googleCredential.idToken, null)
 
-                val firebaseCredential =
-                    GoogleAuthProvider.getCredential(idToken, null)
                 val authResult = auth.signInWithCredential(firebaseCredential).await()
                 val user = authResult.user ?: throw Exception("No se pudo iniciar sesión con Google.")
                 Result.success(user)
             } else {
-                Result.failure(Exception("Tipo de credencial de Google no válido."))
+                Result.failure(Exception("Credencial de Google no válida."))
             }
-        } catch (e: GetCredentialCancellationException) {
-            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    /**
-     * Cerrar la sesión actual.
-     */
+
+    // Cambiar el nombre del usuario
+    suspend fun updateName(nuevoNombre: String): Result<Unit> {
+        return try {
+            val user = auth.currentUser ?: throw Exception("No hay usuario conectado.")
+
+            val cambios = UserProfileChangeRequest.Builder()
+                .setDisplayName(nuevoNombre.trim())
+                .build()
+            user.updateProfile(cambios).await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
+    // Cerrar sesión
     fun signOut() {
         auth.signOut()
     }

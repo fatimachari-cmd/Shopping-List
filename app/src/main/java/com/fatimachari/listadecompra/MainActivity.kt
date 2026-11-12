@@ -11,6 +11,7 @@ import com.fatimachari.listadecompra.auth.AuthRepository
 import com.fatimachari.listadecompra.ui.screen.LoginScreen
 import com.fatimachari.listadecompra.ui.screen.MyListScreen
 import com.fatimachari.listadecompra.ui.screen.RegisterScreen
+import com.fatimachari.listadecompra.ui.screen.SplashScreen
 import com.fatimachari.listadecompra.ui.screen.WelcomeScreen
 import com.fatimachari.listadecompra.ui.theme.ListadeCompraTheme
 import com.fatimachari.listadecompra.ui.listdetail.ListDetailScreen
@@ -33,8 +34,9 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
                 val context = LocalContext.current
 
+                // Siempre empezamos por el splash
                 var pantalla by remember {
-                    mutableStateOf(if (currentUser != null) "mis_listas" else "welcome")
+                    mutableStateOf("splash")
                 }
 
                 var cargando by remember {
@@ -50,6 +52,14 @@ class MainActivity : ComponentActivity() {
                 }
 
                 when (pantalla) {
+                    "splash" -> {
+                        // Pasados 2 segundos: si ya hay sesión vamos a las listas, si no a la bienvenida
+                        SplashScreen(
+                            onTimeout = {
+                                pantalla = if (currentUser != null) "mis_listas" else "welcome"
+                            }
+                        )
+                    }
                     "welcome" -> {
                         WelcomeScreen(
                             onEmpezar = {
