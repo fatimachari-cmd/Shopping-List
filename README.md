@@ -20,7 +20,7 @@ Proyecto desarrollado por **Fatima Chari** y **Loubna Houta** (DAM, Institut Bai
 
 | Invitaciones | Favoritos | Perfil |
 |:---:|:---:|:---:|
-| <img width="240" height="320" alt="Captura de pantalla 2026-11-12 013200" src="https://github.com/user-attachments/assets/2f48144e-0075-493d-b7cd-5fd07f9971ec" /> <img width="290" height="400" alt="WhatsApp Image 2026-11-12 at 01 34 21" src="https://github.com/user-attachments/assets/25f88230-3ff3-4840-9979-99c11414fc74" /> | <img width="240" height="320" alt="WhatsApp Image 2026-11-12 at 01 51 46" src="https://github.com/user-attachments/assets/f8cd8288-4c65-4433-a077-0746892f40a6" /> | <img width="240" height="320" alt="Captura de pantalla 2026-11-12 014656" src="https://github.com/user-attachments/assets/ce48b24f-2dee-4bf9-acdb-dc20a876c9fe" /> |
+| <img width="220" height="420" alt="Captura de pantalla 2026-11-12 013200" src="https://github.com/user-attachments/assets/2f48144e-0075-493d-b7cd-5fd07f9971ec" /> | <img width="220" height="420" alt="WhatsApp Image 2026-11-12 at 01 34 21" src="https://github.com/user-attachments/assets/25f88230-3ff3-4840-9979-99c11414fc74" /> | <img width="220" height="420" alt="Captura de pantalla 2026-11-12 014656" src="https://github.com/user-attachments/assets/ce48b24f-2dee-4bf9-acdb-dc20a876c9fe" /> |
 
 ---
 
