@@ -16,7 +16,7 @@ Proyecto desarrollado por **Fatima Chari** y **Loubna Houta** (DAM, Institut Bai
 
 | Mis listas | Detalle de una lista | Categorías |
 |:---:|:---:|:---:|
-| <img width="360" height="758" alt="Captura de pantalla 2026-11-12 014535" src="https://github.com/user-attachments/assets/b81ee3f4-57c8-4271-b087-69c7da69ef08" /> | <img width="360" height="761" alt="Captura de pantalla 2026-11-12 013045" src="https://github.com/user-attachments/assets/66ccefae-2198-4d3f-a348-2cb91a94a48a" /> | <img width="357" height="257" alt="Captura de pantalla 2026-11-12 015330" src="https://github.com/user-attachments/assets/efc7663c-87ff-47ad-8aac-299f74a69840" /> |
+| <img width="360" height="758" alt="Captura de pantalla 2026-11-12 014535" src="https://github.com/user-attachments/assets/b81ee3f4-57c8-4271-b087-69c7da69ef08" /> | <img width="360" height="761" alt="Captura de pantalla 2026-11-12 013045" src="https://github.com/user-attachments/assets/da11030d-86b9-4363-8e13-0e9a299f06a2" /> | <img width="357" height="257" alt="Captura de pantalla 2026-11-12 015330" src="https://github.com/user-attachments/assets/efc7663c-87ff-47ad-8aac-299f74a69840" /> |
 
 | Invitaciones | Favoritos | Perfil |
 |:---:|:---:|:---:|
