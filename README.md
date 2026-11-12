@@ -13,9 +13,7 @@ Proyecto desarrollado por **Fatima Chari** y **Loubna Houta** (DAM, Institut Bai
 | Bienvenida | Inicio de sesión | Registro |
 |:---:|:---:|:---:|
 | <img width="359" height="753" alt="Captura de pantalla 2026-11-12 003437" src="https://github.com/user-attachments/assets/a4af4c61-0a77-408c-a463-3cf82b1176be" />
-
- |<img width="357" height="539" alt="Captura de pantalla 2026-11-12 003633" src="https://github.com/user-attachments/assets/388ded51-6b2a-4ab6-bf45-399d1dd86d3a" />
- 
+|<img width="1080" height="2400" alt="Screenshot_20261112_021640" src="https://github.com/user-attachments/assets/32530aba-c0bd-455d-ad44-e8cc51b25d14" />
 | <img width="358" height="612" alt="Captura de pantalla 2026-11-12 003743" src="https://github.com/user-attachments/assets/2a1686d5-ad1c-40a5-984b-a84c542aa587" />|
 
 | Mis listas | Detalle de una lista | Categorías |
