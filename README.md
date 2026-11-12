@@ -12,15 +12,15 @@ Proyecto desarrollado por **Fatima Chari** y **Loubna Houta** (DAM, Institut Bai
 
 | Bienvenida | Inicio de sesión | Registro |
 |:---:|:---:|:---:|
-| <img width="359" height="753" alt="Captura de pantalla 2026-11-12 003437" src="https://github.com/user-attachments/assets/a4af4c61-0a77-408c-a463-3cf82b1176be" /> | <img width="357" height="539" alt="Captura de pantalla 2026-11-12 003633" src="https://github.com/user-attachments/assets/abc37a05-1e91-4f40-8e60-943f8059b8e6" /> | <img width="358" height="612" alt="Captura de pantalla 2026-11-12 003743" src="https://github.com/user-attachments/assets/2a1686d5-ad1c-40a5-984b-a84c542aa587" /> |
+| <img width="220" alt="Captura de pantalla 2026-11-12 003437" src="https://github.com/user-attachments/assets/a4af4c61-0a77-408c-a463-3cf82b1176be" /> | <img width="220" alt="Captura de pantalla 2026-11-12 003633" src="https://github.com/user-attachments/assets/abc37a05-1e91-4f40-8e60-943f8059b8e6" /> | <img width="220" alt="Captura de pantalla 2026-11-12 003743" src="https://github.com/user-attachments/assets/2a1686d5-ad1c-40a5-984b-a84c542aa587" /> |
 
 | Mis listas | Detalle de una lista | Categorías |
 |:---:|:---:|:---:|
-| <img width="360" height="758" alt="Captura de pantalla 2026-11-12 014535" src="https://github.com/user-attachments/assets/b81ee3f4-57c8-4271-b087-69c7da69ef08" /> | <img width="360" height="761" alt="Captura de pantalla 2026-11-12 013045" src="https://github.com/user-attachments/assets/da11030d-86b9-4363-8e13-0e9a299f06a2" /> | <img width="357" height="257" alt="Captura de pantalla 2026-11-12 015330" src="https://github.com/user-attachments/assets/efc7663c-87ff-47ad-8aac-299f74a69840" /> |
+| <img width="220" alt="Captura de pantalla 2026-11-12 014535" src="https://github.com/user-attachments/assets/b81ee3f4-57c8-4271-b087-69c7da69ef08" /> | <img width="220" alt="Captura de pantalla 2026-11-12 013045" src="https://github.com/user-attachments/assets/da11030d-86b9-4363-8e13-0e9a299f06a2" /> | <img width="220" alt="Captura de pantalla 2026-11-12 015330" src="https://github.com/user-attachments/assets/efc7663c-87ff-47ad-8aac-299f74a69840" /> |
 
 | Invitaciones | Favoritos | Perfil |
 |:---:|:---:|:---:|
-| <img width="220" height="420" alt="Captura de pantalla 2026-11-12 013200" src="https://github.com/user-attachments/assets/2f48144e-0075-493d-b7cd-5fd07f9971ec" /> | <img width="220" height="420" alt="WhatsApp Image 2026-11-12 at 01 34 21" src="https://github.com/user-attachments/assets/25f88230-3ff3-4840-9979-99c11414fc74" /> | <img width="220" height="420" alt="Captura de pantalla 2026-11-12 014656" src="https://github.com/user-attachments/assets/ce48b24f-2dee-4bf9-acdb-dc20a876c9fe" /> |
+| <img width="220" alt="Captura de pantalla 2026-11-12 013200" src="https://github.com/user-attachments/assets/2f48144e-0075-493d-b7cd-5fd07f9971ec" /> | <img width="220" alt="WhatsApp Image 2026-11-12 at 01 34 21" src="https://github.com/user-attachments/assets/25f88230-3ff3-4840-9979-99c11414fc74" /> | <img width="220" alt="Captura de pantalla 2026-11-12 014656" src="https://github.com/user-attachments/assets/ce48b24f-2dee-4bf9-acdb-dc20a876c9fe" /> |
 
 ---
 
